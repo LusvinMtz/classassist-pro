@@ -1,0 +1,61 @@
+<?php
+
+use Illuminate\Support\Facades\Route;
+
+Route::redirect('/', '/login');
+
+// ─── Módulo Admin (solo administradores) ─────────────────────────────────────
+Route::middleware(['auth', 'verified', 'role.admin'])->prefix('admin')->group(function () {
+
+    Route::view('',                   'admin.index')              ->name('admin.index');
+    Route::view('usuarios',           'admin.usuarios')           ->name('admin.usuarios');
+    Route::view('tipos-calificacion', 'admin.tipos-calificacion') ->name('admin.tipos-calificacion');
+
+});
+
+// ─── Aplicación principal (administradores y catedráticos) ───────────────────
+Route::middleware(['auth', 'verified', 'role.catedratico'])->group(function () {
+
+    Route::view('dashboard',         'dashboard')              ->name('dashboard');
+    Route::view('clases',            'clases.index')           ->name('clases.index');
+    Route::view('estudiantes',       'estudiantes.index')      ->name('estudiantes.index');
+    Route::view('sesiones',          'sesiones.index')         ->name('sesiones.index');
+    Route::view('asistencia',        'asistencia.index')       ->name('asistencia.index');
+    Route::view('ruleta',            'ruleta.index')           ->name('ruleta.index');
+    Route::view('grupos',            'grupos.index')           ->name('grupos.index');
+    Route::view('temporizador',      'temporizador.index')     ->name('temporizador.index');
+    Route::view('desempeno',         'desempeno.index')        ->name('desempeno.index');
+    Route::view('historial-grupos',  'historial-grupos.index') ->name('historial-grupos.index');
+    Route::view('medidor',           'medidor.index')          ->name('medidor.index');
+    Route::view('exportacion',       'exportacion.index')      ->name('exportacion.index');
+
+    // Plantilla de importación de estudiantes
+    Route::get('estudiantes/plantilla', function () {
+        return \Maatwebsite\Excel\Facades\Excel::download(
+            new \App\Exports\EstudiantesPlantillaExport(),
+            'plantilla_estudiantes.xlsx'
+        );
+    })->name('estudiantes.plantilla');
+
+    // Exportación Excel
+    Route::get('exportacion/{claseId}/download', function (int $claseId) {
+        $user  = auth()->user();
+        $query = \App\Models\Clase::query();
+        if (!$user->isAdmin()) {
+            $query->where('usuario_id', $user->id);
+        }
+        $clase  = $query->findOrFail($claseId);
+        $nombre = 'classassist_' . \Illuminate\Support\Str::slug($clase->nombre) . '_' . now()->format('Ymd_His') . '.xlsx';
+        return \Maatwebsite\Excel\Facades\Excel::download(
+            new \App\Exports\AsistenciaExport($clase->id, $clase->nombre), $nombre
+        );
+    })->name('exportacion.download');
+
+});
+
+// ─── Registro de asistencia (público — estudiantes sin cuenta) ────────────────
+Route::get('/asistir/{token}', function (string $token) {
+    return view('asistencia.registrar', ['token' => $token]);
+})->name('asistir');
+
+require __DIR__.'/auth.php';
