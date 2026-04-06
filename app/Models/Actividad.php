@@ -4,15 +4,15 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-class TipoCalificacion extends Model
+class Actividad extends Model
 {
-    protected $table = 'tipo_calificacion';
+    protected $table = 'actividad';
 
     public $timestamps = false;
 
     protected $fillable = [
+        'clase_id',
         'nombre',
-        'descripcion',
         'punteo_max',
         'orden',
     ];
@@ -25,14 +25,13 @@ class TipoCalificacion extends Model
         ];
     }
 
-    /** ¿Es el tipo especial de Actividades? */
-    public function esActividades(): bool
+    public function clase()
     {
-        return strtolower($this->nombre) === 'actividades';
+        return $this->belongsTo(Clase::class, 'clase_id');
     }
 
-    public function calificaciones()
+    public function notas()
     {
-        return $this->hasMany(Calificacion::class, 'tipo_calificacion_id');
+        return $this->hasMany(ActividadNota::class, 'actividad_id');
     }
 }

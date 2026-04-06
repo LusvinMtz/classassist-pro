@@ -8,10 +8,10 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('tipo_calificacion', function (Blueprint $table) {
+        Schema::create('actividad', function (Blueprint $table) {
             $table->id();
-            $table->string('nombre', 50)->unique();
-            $table->string('descripcion', 255)->nullable();
+            $table->foreignId('clase_id')->constrained('clase')->cascadeOnDelete();
+            $table->string('nombre', 100);
             $table->decimal('punteo_max', 5, 2)->default(100.00);
             $table->tinyInteger('orden')->default(0);
         });
@@ -19,6 +19,6 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::dropIfExists('tipo_calificacion');
+        Schema::dropIfExists('actividad');
     }
 };

@@ -72,7 +72,7 @@ class Index extends Component
 
         $presentes = Estudiante::whereHas('asistencias', fn ($q) =>
             $q->where('sesion_id', $this->sesionId)
-        )->get()->shuffle();
+        )->get();
 
         if ($presentes->isEmpty()) return;
 
@@ -84,17 +84,153 @@ class Index extends Component
             $numGrupos = (int) ceil($total / max(1, $this->cantidad));
         }
 
-        $chunks = $presentes->chunk((int) ceil($total / $numGrupos));
+        // Construir matriz de co-ocurrencia a partir del historial
+        $coOcurrencia = $this->buildCoOccurrenceMatrix();
+
+        // Convertir a array simple para el algoritmo
+        $lista = $presentes->map(fn ($e) => ['id' => $e->id, 'nombre' => $e->nombre])->values()->toArray();
+
+        // Generar la mejor asignación minimizando repeticiones
+        $mejorGrupos = $this->optimizarGrupos($lista, $numGrupos, $coOcurrencia);
 
         $this->preview = [];
-        foreach ($chunks as $i => $chunk) {
+        foreach ($mejorGrupos as $i => $miembros) {
             $this->preview[] = [
-                'nombre'    => 'Grupo ' . ($i + 1),
-                'miembros'  => $chunk->map(fn ($e) => ['id' => $e->id, 'nombre' => $e->nombre])->values()->toArray(),
+                'nombre'   => 'Grupo ' . ($i + 1),
+                'miembros' => $miembros,
             ];
         }
 
         $this->generado = true;
+    }
+
+    /**
+     * Construye un mapa de cuántas veces cada par de estudiantes ha estado
+     * en el mismo grupo en sesiones anteriores de esta clase.
+     * Clave: "menorId-mayorId" → cantidad de veces juntos.
+     */
+    private function buildCoOccurrenceMatrix(): array
+    {
+        $sesion = Sesion::find($this->sesionId);
+        if (!$sesion) return [];
+
+        $sesionesAnteriores = Sesion::where('clase_id', $sesion->clase_id)
+            ->where('id', '!=', $this->sesionId)
+            ->pluck('id');
+
+        if ($sesionesAnteriores->isEmpty()) return [];
+
+        $grupos = Grupo::whereIn('sesion_id', $sesionesAnteriores)
+            ->with('estudiantes:id')
+            ->get();
+
+        $matrix = [];
+        foreach ($grupos as $grupo) {
+            $ids = $grupo->estudiantes->pluck('id')->sort()->values()->toArray();
+            for ($i = 0; $i < count($ids); $i++) {
+                for ($j = $i + 1; $j < count($ids); $j++) {
+                    $key = $ids[$i] . '-' . $ids[$j];
+                    $matrix[$key] = ($matrix[$key] ?? 0) + 1;
+                }
+            }
+        }
+
+        return $matrix;
+    }
+
+    /** Puntuación de un par (cuántas veces han coincidido). */
+    private function parScore(int $a, int $b, array $matrix): int
+    {
+        $key = min($a, $b) . '-' . max($a, $b);
+        return $matrix[$key] ?? 0;
+    }
+
+    /** Puntuación total de una asignación (suma de co-ocurrencias en todos los grupos). */
+    private function assignmentScore(array $grupos, array $matrix): int
+    {
+        $score = 0;
+        foreach ($grupos as $grupo) {
+            $ids = array_column($grupo, 'id');
+            for ($i = 0; $i < count($ids); $i++) {
+                for ($j = $i + 1; $j < count($ids); $j++) {
+                    $score += $this->parScore($ids[$i], $ids[$j], $matrix);
+                }
+            }
+        }
+        return $score;
+    }
+
+    /**
+     * Genera múltiples asignaciones aleatorias y aplica búsqueda local
+     * para encontrar la que minimice las repeticiones de pares.
+     */
+    private function optimizarGrupos(array $lista, int $numGrupos, array $matrix): array
+    {
+        $total       = count($lista);
+        $tamBase     = (int) ceil($total / $numGrupos);
+        $mejorScore  = PHP_INT_MAX;
+        $mejorGrupos = null;
+
+        // 30 arranques aleatorios: quedarse con el mejor
+        for ($intento = 0; $intento < 30; $intento++) {
+            shuffle($lista);
+
+            // Distribuir uniformemente
+            $grupos = array_fill(0, $numGrupos, []);
+            foreach ($lista as $idx => $estudiante) {
+                $grupos[$idx % $numGrupos][] = $estudiante;
+            }
+
+            // Búsqueda local: intercambio de estudiantes entre grupos
+            $grupos = $this->busquedaLocal($grupos, $matrix);
+
+            $score = $this->assignmentScore($grupos, $matrix);
+            if ($score < $mejorScore) {
+                $mejorScore  = $score;
+                $mejorGrupos = $grupos;
+                if ($score === 0) break; // óptimo: ninguna repetición
+            }
+        }
+
+        return $mejorGrupos ?? array_fill(0, $numGrupos, []);
+    }
+
+    /**
+     * Mejora la asignación intentando intercambiar estudiantes de distintos
+     * grupos cuando eso reduce la puntuación total.
+     */
+    private function busquedaLocal(array $grupos, array $matrix): array
+    {
+        $numGrupos = count($grupos);
+        $mejorado  = true;
+
+        while ($mejorado) {
+            $mejorado = false;
+
+            for ($g1 = 0; $g1 < $numGrupos - 1; $g1++) {
+                for ($g2 = $g1 + 1; $g2 < $numGrupos; $g2++) {
+                    for ($i = 0; $i < count($grupos[$g1]); $i++) {
+                        for ($j = 0; $j < count($grupos[$g2]); $j++) {
+                            $antes = $this->assignmentScore($grupos, $matrix);
+
+                            // Intercambiar estudiante i de g1 con j de g2
+                            [$grupos[$g1][$i], $grupos[$g2][$j]] = [$grupos[$g2][$j], $grupos[$g1][$i]];
+
+                            $despues = $this->assignmentScore($grupos, $matrix);
+
+                            if ($despues < $antes) {
+                                $mejorado = true; // mantener el intercambio
+                            } else {
+                                // Revertir
+                                [$grupos[$g1][$i], $grupos[$g2][$j]] = [$grupos[$g2][$j], $grupos[$g1][$i]];
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        return $grupos;
     }
 
     public function guardar(): void

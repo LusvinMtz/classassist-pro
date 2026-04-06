@@ -33,4 +33,9 @@ class Clase extends Model
     {
         return $this->hasMany(Calificacion::class, 'clase_id');
     }
+
+    public function actividades()
+    {
+        return $this->hasMany(Actividad::class, 'clase_id')->orderBy('orden');
+    }
 }

@@ -92,7 +92,11 @@
                     </button>
                     <button wire:click="$set('ordenar','calificacion')"
                             class="px-3 py-1 rounded-full transition {{ $ordenar === 'calificacion' ? 'bg-[#000b60] text-white' : 'bg-white hover:bg-gray-100' }}">
-                        Calificación
+                        Participación
+                    </button>
+                    <button wire:click="$set('ordenar','notas')"
+                            class="px-3 py-1 rounded-full transition {{ $ordenar === 'notas' ? 'bg-[#000b60] text-white' : 'bg-white hover:bg-gray-100' }}">
+                        Notas
                     </button>
                 </div>
             </div>
@@ -106,7 +110,8 @@
                             <th class="text-center px-4 py-3 font-semibold text-gray-500 text-xs">Asistencias</th>
                             <th class="text-center px-4 py-3 font-semibold text-gray-500 text-xs min-w-[160px]">% Asistencia</th>
                             <th class="text-center px-4 py-3 font-semibold text-gray-500 text-xs">Participaciones</th>
-                            <th class="text-center px-4 py-3 font-semibold text-gray-500 text-xs">Calif. prom.</th>
+                            <th class="text-center px-4 py-3 font-semibold text-gray-500 text-xs">Calif. participación</th>
+                            <th class="text-center px-4 py-3 font-semibold text-gray-500 text-xs">Notas (prom.)</th>
                             <th class="text-center px-4 py-3 font-semibold text-gray-500 text-xs">Rendimiento</th>
                         </tr>
                     </thead>
@@ -117,14 +122,16 @@
                                 $barColor = $pct >= 75 ? 'bg-green-500' : ($pct >= 50 ? 'bg-orange-400' : 'bg-red-400');
                                 $textColor = $pct >= 75 ? 'text-green-600' : ($pct >= 50 ? 'text-orange-500' : 'text-red-500');
 
-                                // Rendimiento general (0-100): 60% asistencia + 40% calificación
+                                // Rendimiento: 50% asistencia + 20% calif.participacion + 30% notas
                                 $scoreAsist  = $pct;
                                 $scoreCalif  = $e['promedio'] !== null ? ($e['promedio'] / 10 * 100) : null;
-                                if ($scoreCalif !== null) {
-                                    $rendimiento = round($scoreAsist * 0.6 + $scoreCalif * 0.4);
-                                } else {
-                                    $rendimiento = round($scoreAsist * 0.6);
-                                }
+                                $scoreNotas  = $e['prom_notas'] !== null ? (float) $e['prom_notas'] : null;
+                                $partes      = 0;
+                                $rendimiento = $scoreAsist * 0.5;
+                                $partes     += 50;
+                                if ($scoreCalif !== null) { $rendimiento += $scoreCalif * 0.2; $partes += 20; }
+                                if ($scoreNotas !== null) { $rendimiento += $scoreNotas * 0.3;  $partes += 30; }
+                                $rendimiento = $partes > 0 ? round($rendimiento / $partes * 100) : 0;
                                 $rendColor = $rendimiento >= 75 ? 'text-green-600 bg-green-50' : ($rendimiento >= 50 ? 'text-orange-500 bg-orange-50' : 'text-red-500 bg-red-50');
                             @endphp
                             <tr class="hover:bg-[#f3faff] transition {{ $pos === 0 ? 'bg-yellow-50/50' : '' }}">
@@ -177,7 +184,7 @@
                                     @endif
                                 </td>
 
-                                {{-- Calificación promedio --}}
+                                {{-- Calificación promedio participación --}}
                                 <td class="px-4 py-3 text-center">
                                     @if($e['promedio'] !== null)
                                         @php
@@ -187,6 +194,22 @@
                                         @endphp
                                         <span class="font-bold text-xs px-2 py-0.5 rounded-full {{ $califColor }}">
                                             {{ number_format($e['promedio'], 1) }}
+                                        </span>
+                                    @else
+                                        <span class="text-gray-300 text-xs">—</span>
+                                    @endif
+                                </td>
+
+                                {{-- Notas promedio --}}
+                                <td class="px-4 py-3 text-center">
+                                    @if($e['prom_notas'] !== null)
+                                        @php
+                                            $notaColor = $e['prom_notas'] >= 70
+                                                ? 'bg-green-100 text-green-700'
+                                                : ($e['prom_notas'] >= 50 ? 'bg-orange-100 text-orange-700' : 'bg-red-100 text-red-700');
+                                        @endphp
+                                        <span class="font-bold text-xs px-2 py-0.5 rounded-full {{ $notaColor }}">
+                                            {{ number_format($e['prom_notas'], 1) }}
                                         </span>
                                     @else
                                         <span class="text-gray-300 text-xs">—</span>
@@ -211,7 +234,7 @@
                 <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-green-500 inline-block"></span> Asistencia ≥ 75%</span>
                 <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-orange-400 inline-block"></span> Asistencia 50–74%</span>
                 <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-red-400 inline-block"></span> Asistencia &lt; 50%</span>
-                <span class="ml-auto">Rendimiento = 60% asistencia + 40% calificación promedio</span>
+                <span class="ml-auto">Rendimiento = 50% asistencia + 20% calif. participación + 30% notas</span>
             </div>
 
         </div>

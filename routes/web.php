@@ -28,6 +28,8 @@ Route::middleware(['auth', 'verified', 'role.catedratico'])->group(function () {
     Route::view('historial-grupos',  'historial-grupos.index') ->name('historial-grupos.index');
     Route::view('medidor',           'medidor.index')          ->name('medidor.index');
     Route::view('exportacion',       'exportacion.index')      ->name('exportacion.index');
+    Route::view('pantalla-clase',    'pantalla-clase.index')   ->name('pantalla-clase.index');
+    Route::view('calificaciones',    'calificaciones.index')   ->name('calificaciones.index');
 
     // Plantilla de importación de estudiantes
     Route::get('estudiantes/plantilla', function () {

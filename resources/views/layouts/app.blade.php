@@ -9,6 +9,7 @@
 
     <!-- Tailwind -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>tailwind.config = { darkMode: 'media' }</script>
 
     <!-- Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
@@ -22,7 +23,7 @@
     </style>
 </head>
 
-<body class="bg-[#f3faff] text-[#071e27]">
+<body class="bg-[#f3faff] text-[#071e27] dark:bg-[#071e27] dark:text-[#dff4ff]">
 
     @include('layouts.sidebar')
 

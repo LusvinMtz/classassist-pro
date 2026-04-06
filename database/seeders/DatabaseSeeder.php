@@ -18,11 +18,13 @@ class DatabaseSeeder extends Seeder
             ['nombre' => 'estudiante',  'descripcion' => 'Alumno'],
         ]);
 
-        // Tipos de calificación
+        // Tipos de calificación (punteo_max en puntos reales, total = 100)
         DB::table('tipo_calificacion')->insert([
-            ['nombre' => 'asistencia',    'descripcion' => 'Puntos por asistencia'],
-            ['nombre' => 'participacion', 'descripcion' => 'Puntos por participación'],
-            ['nombre' => 'grupo',         'descripcion' => 'Puntos por trabajo en grupo'],
+            ['nombre' => 'Parcial 1',    'descripcion' => 'Primer examen parcial',    'punteo_max' => 15.00, 'orden' => 1],
+            ['nombre' => 'Parcial 2',    'descripcion' => 'Segundo examen parcial',   'punteo_max' => 15.00, 'orden' => 2],
+            ['nombre' => 'Actividades',  'descripcion' => 'Tareas y actividades',     'punteo_max' => 25.00, 'orden' => 3],
+            ['nombre' => 'Proyecto',     'descripcion' => 'Proyecto del curso',       'punteo_max' => 10.00, 'orden' => 4],
+            ['nombre' => 'Examen Final', 'descripcion' => 'Examen final del curso',   'punteo_max' => 35.00, 'orden' => 5],
         ]);
 
         // Usuario admin

@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Desempeno;
 
+use App\Models\Calificacion;
 use App\Models\Clase;
 use App\Models\Sesion;
 use App\Models\Asistencia;
@@ -11,7 +12,7 @@ use Livewire\Component;
 class Index extends Component
 {
     public ?int  $claseId  = null;
-    public string $ordenar = 'asistencia'; // asistencia | participaciones | calificacion
+    public string $ordenar = 'asistencia'; // asistencia | participaciones | calificacion | notas
 
     public function render()
     {
@@ -34,19 +35,28 @@ class Index extends Component
                 ->groupBy('estudiante_id')
                 ->pluck('total', 'estudiante_id');
 
-            // Participaciones y promedio por estudiante
+            // Participaciones y promedio de calificación por estudiante
             $participacionesPor = Participacion::whereIn('sesion_id', $sesionIds)
                 ->selectRaw('estudiante_id, COUNT(*) as total, AVG(calificacion) as promedio')
                 ->groupBy('estudiante_id')
                 ->get()
                 ->keyBy('estudiante_id');
 
-            $ranking = $estudiantes->map(function ($e) use ($asistenciasPor, $participacionesPor, $totalSesiones) {
-                $asistencias      = $asistenciasPor[$e->id] ?? 0;
-                $pct              = $totalSesiones > 0 ? round($asistencias / $totalSesiones * 100) : 0;
-                $part             = $participacionesPor[$e->id] ?? null;
+            // Notas (Calificacion) promedio por estudiante en esta clase
+            $notasPor = Calificacion::where('clase_id', $this->claseId)
+                ->selectRaw('estudiante_id, AVG(nota) as promedio_notas, COUNT(*) as total_notas')
+                ->groupBy('estudiante_id')
+                ->get()
+                ->keyBy('estudiante_id');
+
+            $ranking = $estudiantes->map(function ($e) use ($asistenciasPor, $participacionesPor, $notasPor, $totalSesiones) {
+                $asistencias        = $asistenciasPor[$e->id] ?? 0;
+                $pct                = $totalSesiones > 0 ? round($asistencias / $totalSesiones * 100) : 0;
+                $part               = $participacionesPor[$e->id] ?? null;
                 $numParticipaciones = $part ? $part->total : 0;
-                $promedio         = $part && $part->promedio !== null ? round($part->promedio, 1) : null;
+                $promedio           = $part && $part->promedio !== null ? round($part->promedio, 1) : null;
+                $notasRec           = $notasPor[$e->id] ?? null;
+                $promNotas          = $notasRec ? round((float) $notasRec->promedio_notas, 1) : null;
 
                 return [
                     'id'               => $e->id,
@@ -56,12 +66,14 @@ class Index extends Component
                     'pct_asistencia'   => $pct,
                     'participaciones'  => $numParticipaciones,
                     'promedio'         => $promedio,
+                    'prom_notas'       => $promNotas,
                 ];
             });
 
             $ranking = match ($this->ordenar) {
                 'participaciones' => $ranking->sortByDesc('participaciones'),
                 'calificacion'    => $ranking->sortByDesc(fn ($e) => $e['promedio'] ?? -1),
+                'notas'           => $ranking->sortByDesc(fn ($e) => $e['prom_notas'] ?? -1),
                 default           => $ranking->sortByDesc('pct_asistencia'),
             };
 

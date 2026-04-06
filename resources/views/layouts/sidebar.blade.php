@@ -1,8 +1,8 @@
-<aside class="h-screen w-64 fixed left-0 top-0 hidden md:flex flex-col bg-[#e6f6ff] text-[#000b60] font-semibold py-6 space-y-4">
+<aside class="h-screen w-64 fixed left-0 top-0 hidden md:flex flex-col bg-[#e6f6ff] text-[#000b60] dark:bg-[#0d1f2a] dark:text-[#bcc2ff] font-semibold py-6 space-y-4">
 
     <div class="px-4 mb-2">
         <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-lg bg-[#000b60] flex items-center justify-center text-white font-black text-xl">
+            <div class="w-10 h-10 rounded-lg bg-[#000b60] dark:bg-[#303c9a] flex items-center justify-center text-white font-black text-xl">
                 C
             </div>
             <div>
@@ -14,8 +14,8 @@
     </div>
 
     @php
-        $active   = 'bg-white rounded-lg mx-2 my-0.5 px-4 py-2.5 shadow flex items-center gap-3';
-        $inactive = 'px-4 py-2.5 mx-2 hover:bg-blue-100 rounded-lg flex items-center gap-3 transition';
+        $active   = 'bg-white dark:bg-[#1e333c] rounded-lg mx-2 my-0.5 px-4 py-2.5 shadow dark:shadow-black/40 flex items-center gap-3';
+        $inactive = 'px-4 py-2.5 mx-2 hover:bg-blue-100 dark:hover:bg-[#1a2f3c] rounded-lg flex items-center gap-3 transition';
         $user     = auth()->user();
     @endphp
 
@@ -24,7 +24,7 @@
         {{-- ── Módulo Admin (solo administradores) ─────────────────── --}}
         @if($user?->isAdmin())
         <div class="px-4 pt-1 pb-1">
-            <p class="text-[10px] font-black uppercase tracking-widest text-[#000b60]/40">Administración</p>
+            <p class="text-[10px] font-black uppercase tracking-widest text-[#000b60]/40 dark:text-[#bcc2ff]/40">Administración</p>
         </div>
 
         <a href="{{ route('admin.index') }}"
@@ -45,9 +45,9 @@
             Tipos Calificación
         </a>
 
-        <div class="mx-4 my-2 border-t border-[#000b60]/10"></div>
+        <div class="mx-4 my-2 border-t border-[#000b60]/10 dark:border-[#bcc2ff]/10"></div>
         <div class="px-4 pb-1">
-            <p class="text-[10px] font-black uppercase tracking-widest text-[#000b60]/40">Académico</p>
+            <p class="text-[10px] font-black uppercase tracking-widest text-[#000b60]/40 dark:text-[#bcc2ff]/40">Académico</p>
         </div>
         @endif
 
@@ -124,12 +124,24 @@
             Exportar Excel
         </a>
 
+        <a href="{{ route('pantalla-clase.index') }}"
+           class="{{ request()->routeIs('pantalla-clase.*') ? $active : $inactive }}">
+            <span class="material-symbols-outlined">cast_for_education</span>
+            Pantalla de Clase
+        </a>
+
+        <a href="{{ route('calificaciones.index') }}"
+           class="{{ request()->routeIs('calificaciones.*') ? $active : $inactive }}">
+            <span class="material-symbols-outlined">grading</span>
+            Calificaciones
+        </a>
+
     </nav>
 
     <div class="px-4 pt-2">
-        <p class="text-xs text-center text-[#000b60]/50 mb-2 truncate">{{ auth()->user()?->nombre }}</p>
+        <p class="text-xs text-center text-[#000b60]/50 dark:text-[#bcc2ff]/50 mb-2 truncate">{{ auth()->user()?->nombre }}</p>
         <button onclick="doLogout()"
-                class="w-full bg-[#000b60] text-white py-2 rounded-lg font-semibold hover:opacity-90 transition">
+                class="w-full bg-[#000b60] dark:bg-[#303c9a] text-white py-2 rounded-lg font-semibold hover:opacity-90 transition">
             Cerrar sesión
         </button>
     </div>

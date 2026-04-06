@@ -112,6 +112,11 @@
                         <span class="material-symbols-outlined" style="font-size:18px">shuffle</span>
                         Generar grupos
                     </button>
+
+                    <p class="text-xs text-gray-400 flex items-center gap-1">
+                        <span class="material-symbols-outlined" style="font-size:13px">auto_awesome</span>
+                        Minimiza repeticiones con historial anterior
+                    </p>
                 </div>
 
                 {{-- Lista de presentes --}}

@@ -1,0 +1,845 @@
+<div wire:poll.5s x-data="pantallaClaseApp()" x-init="init()"
+     @iniciar-ruleta-pantalla.window="iniciarAnimacion($event.detail)">
+
+    {{-- ═══════════════════════════════════════════════════════════════ --}}
+    {{-- CABECERA                                                        --}}
+    {{-- ═══════════════════════════════════════════════════════════════ --}}
+    <div class="flex flex-wrap items-center justify-between gap-3 mb-5">
+
+        <div class="flex items-center gap-4">
+            <div>
+                <h1 class="text-3xl font-extrabold">Pantalla de Clase</h1>
+                <p class="text-sm text-gray-500">Vista centralizada para proyección</p>
+            </div>
+
+            {{-- Selector de clase --}}
+            <select wire:model.live="claseId"
+                    class="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#000b60] min-w-[220px]">
+                <option value="">— Selecciona una clase —</option>
+                @foreach($clases as $clase)
+                    <option value="{{ $clase->id }}">{{ $clase->nombre }}</option>
+                @endforeach
+            </select>
+        </div>
+
+        {{-- Tabs --}}
+        @if($claseId && $sesion)
+        <div class="flex items-center gap-1 bg-white rounded-xl shadow p-1">
+            @foreach([
+                ['qr',        'qr_code_2',   'QR'],
+                ['ruleta',    'casino',       'Ruleta'],
+                ['grupos',    'groups',       'Grupos'],
+                ['timer',     'timer',        'Timer'],
+                ['medidor',   'graphic_eq',   'Ruido'],
+            ] as [$id, $icon, $label])
+            <button wire:click="$set('tab','{{ $id }}')"
+                    class="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-bold transition
+                           {{ $tab === $id
+                               ? 'bg-[#000b60] text-white shadow'
+                               : 'text-gray-500 hover:bg-gray-100' }}">
+                <span class="material-symbols-outlined" style="font-size:18px">{{ $icon }}</span>
+                {{ $label }}
+            </button>
+            @endforeach
+        </div>
+        @endif
+
+    </div>
+
+    {{-- Sin clase seleccionada --}}
+    @if(!$claseId)
+    <div class="bg-white rounded-xl shadow flex flex-col items-center justify-center py-32 text-gray-400">
+        <span class="material-symbols-outlined" style="font-size:72px">cast_for_education</span>
+        <p class="mt-4 font-semibold text-gray-500 text-xl">Selecciona una clase para comenzar</p>
+        <p class="text-sm mt-1">Todas las herramientas de clase estarán disponibles aquí</p>
+    </div>
+
+    {{-- Sin sesión hoy --}}
+    @elseif(!$sesion)
+    <div class="bg-white rounded-xl shadow flex flex-col items-center justify-center py-32 text-gray-400">
+        <span class="material-symbols-outlined" style="font-size:72px">event_busy</span>
+        <p class="mt-4 font-semibold text-gray-500 text-xl">No hay sesión activa para hoy</p>
+        <p class="text-sm mt-1">Crea una sesión desde el módulo de Sesiones para activar la pantalla</p>
+        <a href="{{ route('sesiones.index') }}"
+           class="mt-6 bg-[#000b60] text-white px-6 py-2.5 rounded-lg font-semibold hover:opacity-90 transition flex items-center gap-2">
+            <span class="material-symbols-outlined" style="font-size:18px">calendar_add_on</span>
+            Ir a Sesiones
+        </a>
+    </div>
+
+    @else
+
+    {{-- Barra de estado de sesión --}}
+    <div class="bg-[#e6f6ff] rounded-xl px-5 py-2.5 mb-4 flex items-center justify-between text-sm">
+        <div class="flex items-center gap-3 text-[#000b60] font-bold">
+            <span class="material-symbols-outlined" style="font-size:17px">calendar_today</span>
+            {{ $sesion->clase->nombre }} — Sesión {{ $sesion->fecha->translatedFormat('d/m/Y') }}
+            @if($sesion->finalizada)
+                <span class="bg-red-100 text-red-600 text-xs font-bold px-2 py-0.5 rounded-full">Finalizada</span>
+            @else
+                <span class="bg-green-100 text-green-700 text-xs font-bold px-2 py-0.5 rounded-full">Activa</span>
+            @endif
+        </div>
+        <div class="flex items-center gap-2 font-bold text-[#000b60]">
+            <span class="material-symbols-outlined text-green-600" style="font-size:17px">how_to_reg</span>
+            {{ $asistentes->count() }} / {{ $totalEstudiantes }} presentes
+        </div>
+    </div>
+
+    {{-- ═══════════════════════════════════════════════════════════════ --}}
+    {{-- TAB: QR                                                         --}}
+    {{-- ═══════════════════════════════════════════════════════════════ --}}
+    @if($tab === 'qr')
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+        {{-- Panel QR --}}
+        <div class="bg-white rounded-2xl shadow-lg p-8 flex flex-col items-center">
+
+            @if($qrSvg && $sesion->expiracion > now())
+                @php
+                    $segsRestantes = $sesion->expiracion->gt(now())
+                        ? (int) now()->diffInSeconds($sesion->expiracion) : 0;
+                    $minsD = floor($segsRestantes / 60);
+                    $segsD = $segsRestantes % 60;
+                @endphp
+
+                <p class="text-xs font-black text-[#000b60] uppercase tracking-widest mb-4">
+                    Escanea para registrar asistencia
+                </p>
+
+                <div class="border-4 border-[#000b60] rounded-2xl p-2 mb-4">
+                    {!! $qrSvg !!}
+                </div>
+
+                <div class="text-center mb-5">
+                    <p class="text-xs text-gray-400 mb-1">Tiempo restante</p>
+                    <p class="text-5xl font-black font-mono {{ $segsRestantes <= 60 ? 'text-red-500' : 'text-[#000b60]' }}">
+                        {{ sprintf('%02d:%02d', $minsD, $segsD) }}
+                    </p>
+                    @if($segsRestantes <= 60)
+                        <p class="text-xs text-red-500 font-semibold mt-1">⚠ Menos de 1 minuto</p>
+                    @else
+                        <span class="text-xs text-green-600 font-semibold">QR activo</span>
+                    @endif
+                </div>
+
+                <button wire:click="generarQR"
+                        class="w-full border-2 border-[#000b60] text-[#000b60] py-3 rounded-xl font-bold hover:bg-blue-50 transition flex items-center justify-center gap-2">
+                    <span class="material-symbols-outlined" style="font-size:18px">refresh</span>
+                    Renovar QR (5 min)
+                </button>
+
+            @else
+                <span class="material-symbols-outlined text-gray-200 mb-4" style="font-size:100px">qr_code_2</span>
+                <p class="font-semibold text-gray-500 text-lg mb-1">
+                    {{ $sesion->token ? 'QR expirado' : 'Sin QR activo' }}
+                </p>
+                <p class="text-sm text-gray-400 mb-6 text-center">
+                    Genera un código para que los estudiantes registren su asistencia
+                </p>
+                <button wire:click="generarQR"
+                        class="bg-[#000b60] text-white px-8 py-3 rounded-xl font-bold hover:opacity-90 transition flex items-center gap-2 text-lg">
+                    <span class="material-symbols-outlined">qr_code</span>
+                    Generar QR (5 min)
+                </button>
+            @endif
+
+        </div>
+
+        {{-- Panel asistentes --}}
+        <div class="bg-white rounded-2xl shadow-lg overflow-hidden flex flex-col">
+
+            <div class="bg-[#000b60] px-6 py-4 flex items-center justify-between">
+                <span class="font-black text-white text-lg flex items-center gap-2">
+                    <span class="material-symbols-outlined">how_to_reg</span>
+                    Presentes
+                </span>
+                <div class="flex items-center gap-3">
+                    <span class="text-4xl font-black text-yellow-300">{{ $asistentes->count() }}</span>
+                    <span class="text-white/50 text-lg">/ {{ $totalEstudiantes }}</span>
+                    @if($totalEstudiantes > 0)
+                        <span class="bg-white/20 text-white text-sm font-bold px-3 py-1 rounded-full">
+                            {{ round(($asistentes->count() / $totalEstudiantes) * 100) }}%
+                        </span>
+                    @endif
+                </div>
+            </div>
+
+            <div class="flex-1 overflow-y-auto">
+                @if($asistentes->isEmpty())
+                    <div class="flex flex-col items-center justify-center py-16 text-gray-300">
+                        <span class="material-symbols-outlined" style="font-size:48px">person_add</span>
+                        <p class="mt-3 font-semibold text-gray-400">Esperando registros...</p>
+                    </div>
+                @else
+                    <div class="grid grid-cols-2 gap-2 p-4">
+                        @foreach($asistentes as $a)
+                            <div class="bg-green-50 border border-green-100 rounded-xl px-3 py-2 flex items-center gap-2">
+                                <span class="material-symbols-outlined text-green-500" style="font-size:16px">check_circle</span>
+                                <div>
+                                    <p class="font-bold text-sm text-gray-800 leading-tight">{{ $a->estudiante->nombre }}</p>
+                                    <p class="text-xs text-gray-400 font-mono">{{ \Carbon\Carbon::parse($a->fecha_hora)->format('H:i') }}</p>
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                @endif
+            </div>
+
+        </div>
+    </div>
+
+    {{-- ═══════════════════════════════════════════════════════════════ --}}
+    {{-- TAB: RULETA                                                     --}}
+    {{-- ═══════════════════════════════════════════════════════════════ --}}
+    @elseif($tab === 'ruleta')
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+        {{-- Display ruleta --}}
+        <div class="lg:col-span-2 flex flex-col items-center">
+
+            <div class="w-full bg-[#000b60] rounded-2xl shadow-2xl flex flex-col items-center justify-center py-16 px-8 mb-6 relative overflow-hidden"
+                 style="min-height: 340px;">
+                <div class="absolute inset-0 opacity-5"
+                     style="background: repeating-linear-gradient(45deg, white 0, white 1px, transparent 0, transparent 50%); background-size: 20px 20px;"></div>
+
+                <div x-show="!girando && !ganadorMostrado" class="text-center z-10">
+                    <span class="material-symbols-outlined text-white opacity-20" style="font-size:80px">casino</span>
+                    <p class="text-white/40 mt-3 text-2xl font-semibold">Presiona Girar para comenzar</p>
+                    <p class="text-white/25 mt-1 text-sm">{{ $presentes->count() }} estudiante(s) en la ruleta</p>
+                </div>
+
+                <div x-show="girando || ganadorMostrado" class="text-center z-10 w-full px-6">
+                    <p class="text-white/50 text-sm uppercase tracking-widest mb-4"
+                       x-text="girando ? 'Seleccionando...' : '¡Seleccionado!'"></p>
+                    <p class="font-black leading-tight text-center transition-all duration-100"
+                       :class="{
+                           'text-white text-5xl md:text-6xl': girando,
+                           'text-yellow-300 text-6xl md:text-7xl scale-110 drop-shadow-lg': ganadorMostrado && !girando
+                       }"
+                       style="text-shadow: 0 0 40px rgba(253,224,71,0.5);"
+                       x-text="nombreActual"></p>
+                    <div x-show="ganadorMostrado && !girando"
+                         x-transition:enter="transition ease-out duration-500"
+                         x-transition:enter-start="opacity-0 translate-y-4"
+                         x-transition:enter-end="opacity-100 translate-y-0"
+                         class="mt-5 flex items-center justify-center gap-3">
+                        <span class="text-yellow-300 text-3xl">★</span>
+                        <span class="text-white/60 text-lg">Estudiante seleccionado</span>
+                        <span class="text-yellow-300 text-3xl">★</span>
+                    </div>
+                </div>
+            </div>
+
+            <button wire:click="girar"
+                    :disabled="girando"
+                    class="w-full max-w-sm bg-yellow-400 hover:bg-yellow-300 text-[#000b60] font-black text-2xl py-5 rounded-2xl shadow-xl transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3">
+                <span class="material-symbols-outlined text-3xl" :class="girando ? 'animate-spin' : ''">casino</span>
+                <span x-show="!girando">Girar</span>
+                <span x-show="girando">Seleccionando...</span>
+            </button>
+
+            {{-- Historial --}}
+            @if($historial->isNotEmpty())
+            <div class="w-full mt-5 bg-white rounded-xl shadow overflow-hidden">
+                <div class="bg-[#e6f6ff] px-5 py-3 flex items-center justify-between">
+                    <span class="font-bold text-[#000b60] text-sm flex items-center gap-2">
+                        <span class="material-symbols-outlined" style="font-size:18px">history</span>
+                        Participaciones de esta sesión
+                    </span>
+                    <span class="bg-[#000b60] text-white text-xs font-bold px-2.5 py-0.5 rounded-full">
+                        {{ $historial->count() }}
+                    </span>
+                </div>
+                <table class="w-full text-sm">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="text-left px-4 py-2 font-semibold text-gray-500 text-xs">Estudiante</th>
+                            <th class="text-center px-4 py-2 font-semibold text-gray-500 text-xs">Nota</th>
+                            <th class="text-left px-4 py-2 font-semibold text-gray-500 text-xs">Comentario</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-50">
+                        @foreach($historial as $p)
+                        <tr class="hover:bg-[#f3faff]">
+                            <td class="px-4 py-2.5 font-semibold">{{ $p->estudiante->nombre }}</td>
+                            <td class="px-4 py-2.5 text-center">
+                                @if($p->calificacion !== null)
+                                    <span class="bg-blue-100 text-blue-700 font-bold text-xs px-2 py-0.5 rounded-full">
+                                        {{ number_format($p->calificacion, 1) }}
+                                    </span>
+                                @else
+                                    <span class="text-gray-300 text-xs">—</span>
+                                @endif
+                            </td>
+                            <td class="px-4 py-2.5 text-gray-500 text-xs">{{ $p->comentario ?? '—' }}</td>
+                        </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+            @endif
+
+        </div>
+
+        {{-- Lista presentes --}}
+        <div class="bg-white rounded-2xl shadow overflow-hidden h-fit">
+            <div class="bg-[#e6f6ff] px-5 py-3 flex items-center justify-between">
+                <span class="font-bold text-[#000b60] text-sm flex items-center gap-2">
+                    <span class="material-symbols-outlined" style="font-size:18px">how_to_reg</span>
+                    Presentes hoy
+                </span>
+                <span class="bg-green-500 text-white text-xs font-bold px-2.5 py-0.5 rounded-full">
+                    {{ $presentes->count() }}
+                </span>
+            </div>
+            @if($presentes->isEmpty())
+                <p class="text-center text-gray-400 py-8 text-sm">Sin asistencia registrada</p>
+            @else
+            <ul class="divide-y divide-gray-50 max-h-[500px] overflow-y-auto">
+                @foreach($presentes as $i => $e)
+                <li class="px-4 py-2.5 flex items-center gap-3 text-sm hover:bg-[#f3faff]"
+                    :class="nombreActual === '{{ $e->nombre }}' && (girando || ganadorMostrado) ? 'bg-yellow-50 font-bold' : ''">
+                    <span class="text-gray-300 text-xs w-5 text-right">{{ $i + 1 }}</span>
+                    <span>{{ $e->nombre }}</span>
+                </li>
+                @endforeach
+            </ul>
+            @endif
+        </div>
+
+    </div>
+
+    {{-- ═══════════════════════════════════════════════════════════════ --}}
+    {{-- TAB: GRUPOS                                                     --}}
+    {{-- ═══════════════════════════════════════════════════════════════ --}}
+    @elseif($tab === 'grupos')
+    @if($grupos->isEmpty())
+        <div class="bg-white rounded-2xl shadow flex flex-col items-center justify-center py-24 text-gray-400">
+            <span class="material-symbols-outlined" style="font-size:72px">group_add</span>
+            <p class="mt-4 font-semibold text-gray-500 text-xl">No hay grupos guardados para esta sesión</p>
+            <p class="text-sm mt-1">Genera y guarda los grupos desde el módulo de Grupos Aleatorios</p>
+            <a href="{{ route('grupos.index') }}"
+               class="mt-6 bg-[#000b60] text-white px-6 py-2.5 rounded-lg font-semibold hover:opacity-90 transition flex items-center gap-2">
+                <span class="material-symbols-outlined" style="font-size:18px">shuffle</span>
+                Ir a Grupos Aleatorios
+            </a>
+        </div>
+    @else
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            @foreach($grupos as $i => $grupo)
+            @php
+                $colores = [
+                    ['border-blue-400',   'bg-blue-50',   'bg-blue-500',   'text-blue-700'],
+                    ['border-purple-400', 'bg-purple-50', 'bg-purple-500', 'text-purple-700'],
+                    ['border-green-400',  'bg-green-50',  'bg-green-500',  'text-green-700'],
+                    ['border-orange-400', 'bg-orange-50', 'bg-orange-500', 'text-orange-700'],
+                    ['border-pink-400',   'bg-pink-50',   'bg-pink-500',   'text-pink-700'],
+                    ['border-teal-400',   'bg-teal-50',   'bg-teal-500',   'text-teal-700'],
+                    ['border-yellow-400', 'bg-yellow-50', 'bg-yellow-500', 'text-yellow-700'],
+                    ['border-red-400',    'bg-red-50',    'bg-red-500',    'text-red-700'],
+                ];
+                [$border, $bg, $badge, $text] = $colores[$i % count($colores)];
+            @endphp
+            <div class="border-2 {{ $border }} {{ $bg }} rounded-2xl overflow-hidden shadow">
+                <div class="{{ $badge }} px-4 py-3 flex items-center justify-between">
+                    <span class="font-black text-white text-lg flex items-center gap-2">
+                        <span class="material-symbols-outlined" style="font-size:20px">group</span>
+                        {{ $grupo->nombre }}
+                    </span>
+                    <span class="bg-white/30 text-white text-sm font-bold px-2.5 py-0.5 rounded-full">
+                        {{ $grupo->estudiantes->count() }}
+                    </span>
+                </div>
+                <ul class="divide-y divide-white/60 px-4 py-2">
+                    @foreach($grupo->estudiantes as $e)
+                    <li class="py-2.5 flex items-center gap-2 text-base {{ $text }} font-semibold">
+                        <span class="material-symbols-outlined" style="font-size:16px">person</span>
+                        {{ $e->nombre }}
+                    </li>
+                    @endforeach
+                </ul>
+            </div>
+            @endforeach
+        </div>
+    @endif
+
+    {{-- ═══════════════════════════════════════════════════════════════ --}}
+    {{-- TAB: TEMPORIZADOR (Alpine.js puro)                              --}}
+    {{-- ═══════════════════════════════════════════════════════════════ --}}
+    @elseif($tab === 'timer')
+    <div x-data="timerPantalla()" x-init="initTimer()">
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+
+            {{-- Reloj --}}
+            <div class="lg:col-span-2 bg-white rounded-2xl shadow-lg flex flex-col items-center py-10 px-6">
+
+                <p class="text-sm font-bold text-[#000b60] uppercase tracking-widest mb-6 min-h-[20px]"
+                   x-text="tLabel"></p>
+
+                <div class="relative flex items-center justify-center mb-8">
+                    <svg width="280" height="280" viewBox="0 0 280 280" class="-rotate-90">
+                        <circle cx="140" cy="140" r="120" fill="none" stroke="#e6f0ff" stroke-width="14"/>
+                        <circle cx="140" cy="140" r="120" fill="none"
+                                :stroke="tRingColor" stroke-width="14" stroke-linecap="round"
+                                :stroke-dasharray="tCircumference"
+                                :stroke-dashoffset="tDashOffset"
+                                style="transition: stroke-dashoffset 0.9s linear, stroke 0.5s ease;"/>
+                    </svg>
+                    <div class="absolute inset-0 flex flex-col items-center justify-center"
+                         :class="tFinished ? 'animate-pulse' : ''">
+                        <span class="font-black tabular-nums leading-none"
+                              :class="{
+                                  'text-7xl text-[#000b60]': !tFinished && tProgress > 0.25,
+                                  'text-7xl text-orange-500': !tFinished && tProgress <= 0.25 && tProgress > 0.1,
+                                  'text-7xl text-red-500': !tFinished && tProgress <= 0.1,
+                                  'text-5xl text-red-500': tFinished
+                              }"
+                              x-text="tFinished ? '¡Tiempo!' : tDisplay"></span>
+                        <span class="text-xs text-gray-400 mt-2 font-semibold uppercase tracking-widest"
+                              x-show="!tFinished"
+                              x-text="tRunning ? 'en curso' : 'listo'"></span>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-4">
+                    <button @click="tReset()"
+                            class="w-12 h-12 rounded-full border-2 border-gray-200 flex items-center justify-center text-gray-400 hover:border-gray-400 hover:text-gray-600 transition">
+                        <span class="material-symbols-outlined" style="font-size:22px">replay</span>
+                    </button>
+                    <button @click="tRunning ? tPause() : tStart()"
+                            class="w-20 h-20 rounded-full flex items-center justify-center shadow-lg text-white transition"
+                            :class="tFinished ? 'bg-red-500 hover:bg-red-600' : tRunning ? 'bg-orange-400 hover:bg-orange-500' : 'bg-[#000b60] hover:opacity-90'">
+                        <span class="material-symbols-outlined" style="font-size:32px"
+                              x-text="tRunning ? 'pause' : 'play_arrow'"></span>
+                    </button>
+                    <div class="w-12 h-12"></div>
+                </div>
+                <p class="text-xs text-gray-300 mt-5">Barra espaciadora para iniciar / pausar</p>
+            </div>
+
+            {{-- Configuración timer --}}
+            <div class="flex flex-col gap-4">
+                <div class="bg-white rounded-2xl shadow p-5">
+                    <p class="text-xs font-bold text-[#000b60] uppercase tracking-widest mb-4">Tiempos rápidos</p>
+                    <div class="grid grid-cols-3 gap-2">
+                        @foreach([1, 2, 3, 5, 10, 15, 20, 25, 30] as $min)
+                        <button @click="tSetTime({{ $min }})"
+                                :class="tTotal === {{ $min * 60 }} && !tRunning && !tFinished ? 'bg-[#000b60] text-white' : 'bg-[#e6f6ff] text-[#000b60] hover:bg-blue-100'"
+                                class="py-2.5 rounded-xl text-sm font-bold transition">
+                            {{ $min }}<span class="font-normal text-xs opacity-70"> min</span>
+                        </button>
+                        @endforeach
+                    </div>
+                </div>
+                <div class="bg-white rounded-2xl shadow p-5">
+                    <p class="text-xs font-bold text-[#000b60] uppercase tracking-widest mb-3">Etiqueta (opcional)</p>
+                    <input x-model="tLabel" type="text" maxlength="40"
+                           placeholder="Ej. Examen parcial, Debate..."
+                           class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#000b60]">
+                </div>
+                <div class="bg-white rounded-2xl shadow p-5 flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-bold text-[#000b60]">Sonido al finalizar</p>
+                        <p class="text-xs text-gray-400">Alerta sonora al llegar a cero</p>
+                    </div>
+                    <button @click="tSoundOn = !tSoundOn"
+                            :class="tSoundOn ? 'bg-[#000b60]' : 'bg-gray-200'"
+                            class="relative w-12 h-6 rounded-full transition-colors flex-shrink-0">
+                        <span :class="tSoundOn ? 'translate-x-6' : 'translate-x-1'"
+                              class="absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform block"></span>
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    {{-- ═══════════════════════════════════════════════════════════════ --}}
+    {{-- TAB: MEDIDOR DE RUIDO (Alpine.js puro)                          --}}
+    {{-- ═══════════════════════════════════════════════════════════════ --}}
+    @elseif($tab === 'medidor')
+    <div x-data="medidorPantalla()" x-init="initMedidor()">
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+
+            <div class="lg:col-span-2 bg-white rounded-2xl shadow-lg p-8 flex flex-col items-center">
+
+                <div x-show="!mActivo && !mError" class="text-center py-8">
+                    <span class="material-symbols-outlined text-gray-300" style="font-size:80px">mic_off</span>
+                    <p class="mt-4 font-semibold text-gray-500 text-xl">Micrófono inactivo</p>
+                    <p class="text-sm text-gray-400 mb-6">Haz clic en "Activar" para comenzar a medir el ruido</p>
+                    <button @click="mActivar()"
+                            class="bg-[#000b60] text-white px-8 py-3 rounded-xl font-bold text-base hover:opacity-90 transition flex items-center gap-2 mx-auto">
+                        <span class="material-symbols-outlined">mic</span>
+                        Activar micrófono
+                    </button>
+                </div>
+
+                <div x-show="mError" class="text-center py-8">
+                    <span class="material-symbols-outlined text-red-400" style="font-size:64px">mic_off</span>
+                    <p class="mt-3 font-semibold text-red-500" x-text="mErrorMsg"></p>
+                    <button @click="mActivar()"
+                            class="mt-4 border border-gray-200 text-gray-600 px-6 py-2 rounded-lg text-sm hover:bg-gray-50 transition">
+                        Reintentar
+                    </button>
+                </div>
+
+                <div x-show="mActivo" class="w-full flex flex-col items-center gap-6">
+                    <div class="text-center">
+                        <p class="text-xs font-bold uppercase tracking-widest mb-1"
+                           :class="{
+                               'text-green-600':  mNivel === 'silencio' || mNivel === 'bajo',
+                               'text-yellow-600': mNivel === 'moderado',
+                               'text-orange-500': mNivel === 'alto',
+                               'text-red-600':    mNivel === 'muy_alto'
+                           }"
+                           x-text="mEtiqueta"></p>
+                        <p class="font-black tabular-nums leading-none"
+                           :class="{
+                               'text-7xl text-green-500':  mNivel === 'silencio' || mNivel === 'bajo',
+                               'text-7xl text-yellow-500': mNivel === 'moderado',
+                               'text-7xl text-orange-500': mNivel === 'alto',
+                               'text-7xl text-red-500':    mNivel === 'muy_alto'
+                           }"
+                           x-text="mDb + ' dB'"></p>
+                    </div>
+
+                    {{-- Barras visualizador --}}
+                    <div class="flex items-end gap-0.5 h-24 w-full max-w-md">
+                        <template x-for="(bar, idx) in mBars" :key="idx">
+                            <div class="flex-1 rounded-t-sm transition-all duration-75"
+                                 :style="`height: ${bar}%; min-height: 4px;`"
+                                 :class="{
+                                     'bg-green-400':  mNivel === 'silencio' || mNivel === 'bajo',
+                                     'bg-yellow-400': mNivel === 'moderado',
+                                     'bg-orange-400': mNivel === 'alto',
+                                     'bg-red-500':    mNivel === 'muy_alto'
+                                 }"></div>
+                        </template>
+                    </div>
+
+                    {{-- Semáforo --}}
+                    <div class="flex items-center gap-4">
+                        <div class="w-10 h-10 rounded-full flex items-center justify-center transition-all"
+                             :class="(mNivel === 'silencio' || mNivel === 'bajo') ? 'bg-green-500 shadow-lg shadow-green-500/50' : 'bg-gray-100'"></div>
+                        <div class="w-10 h-10 rounded-full flex items-center justify-center transition-all"
+                             :class="mNivel === 'moderado' ? 'bg-yellow-400 shadow-lg shadow-yellow-400/50' : 'bg-gray-100'"></div>
+                        <div class="w-10 h-10 rounded-full flex items-center justify-center transition-all"
+                             :class="mNivel === 'alto' ? 'bg-orange-400 shadow-lg shadow-orange-400/50' : 'bg-gray-100'"></div>
+                        <div class="w-10 h-10 rounded-full flex items-center justify-center transition-all"
+                             :class="mNivel === 'muy_alto' ? 'bg-red-500 shadow-lg shadow-red-500/50' : 'bg-gray-100'"></div>
+                    </div>
+
+                    <button @click="mDetener()"
+                            class="border border-gray-200 text-gray-500 px-6 py-2.5 rounded-xl font-semibold hover:bg-gray-50 transition flex items-center gap-2">
+                        <span class="material-symbols-outlined" style="font-size:18px">stop</span>
+                        Detener
+                    </button>
+                </div>
+
+            </div>
+
+            {{-- Panel info --}}
+            <div class="flex flex-col gap-4">
+                <div class="bg-white rounded-2xl shadow p-5">
+                    <p class="text-xs font-bold text-[#000b60] uppercase tracking-widest mb-4">Niveles de referencia</p>
+                    <div class="space-y-3 text-sm">
+                        @foreach([
+                            ['bg-green-500','Silencio','< 40 dB'],
+                            ['bg-green-400','Bajo','40 – 55 dB'],
+                            ['bg-yellow-400','Moderado','55 – 70 dB'],
+                            ['bg-orange-400','Alto','70 – 85 dB'],
+                            ['bg-red-500','Muy alto','> 85 dB'],
+                        ] as [$color,$label,$rango])
+                        <div class="flex items-center gap-3">
+                            <div class="w-3 h-3 rounded-full {{ $color }} flex-shrink-0"></div>
+                            <span class="font-semibold">{{ $label }}</span>
+                            <span class="text-gray-400 ml-auto font-mono text-xs">{{ $rango }}</span>
+                        </div>
+                        @endforeach
+                    </div>
+                </div>
+                <div class="bg-white rounded-2xl shadow p-5" x-show="mActivo">
+                    <p class="text-xs font-bold text-[#000b60] uppercase tracking-widest mb-4">Estadísticas sesión</p>
+                    <div class="space-y-3 text-sm">
+                        <div class="flex justify-between">
+                            <span class="text-gray-500">Mínimo</span>
+                            <span class="font-bold" x-text="mMin > 0 ? mMin + ' dB' : '—'"></span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-500">Máximo</span>
+                            <span class="font-bold text-red-500" x-text="mMax > 0 ? mMax + ' dB' : '—'"></span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-500">Promedio</span>
+                            <span class="font-bold" x-text="mCount > 0 ? Math.round(mSum / mCount) + ' dB' : '—'"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+    @endif
+
+    @endif {{-- fin sesión activa --}}
+
+    {{-- ═══════════════════════════════════════════════════════════════ --}}
+    {{-- MODAL: Registrar participación (ruleta)                         --}}
+    {{-- ═══════════════════════════════════════════════════════════════ --}}
+    @if($showModal)
+    <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
+            <div class="bg-[#000b60] px-6 py-5 text-center">
+                <p class="text-yellow-300 text-xs font-bold uppercase tracking-widest mb-1">Estudiante seleccionado</p>
+                <h2 class="text-white text-2xl font-black">{{ $ganadorNombre }}</h2>
+            </div>
+            <div class="p-6">
+                <p class="text-sm text-gray-500 text-center mb-5">Registra la participación (opcional)</p>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-semibold mb-1">Calificación <span class="text-gray-400 font-normal">(0 – 10)</span></label>
+                        <input wire:model="calificacion" type="number" min="0" max="10" step="0.5"
+                               placeholder="Ej. 8.5"
+                               class="w-full border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#000b60] @error('calificacion') border-red-400 @enderror">
+                        @error('calificacion') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold mb-1">Comentario</label>
+                        <textarea wire:model="comentario" rows="3"
+                                  placeholder="Observaciones sobre la participación..."
+                                  class="w-full border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#000b60] resize-none @error('comentario') border-red-400 @enderror"></textarea>
+                        @error('comentario') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
+                    </div>
+                </div>
+                <div class="flex gap-3 mt-6">
+                    <button wire:click="omitir"
+                            class="flex-1 border border-gray-200 text-gray-500 py-2.5 rounded-lg hover:bg-gray-50 font-semibold transition text-sm">
+                        Omitir
+                    </button>
+                    <button wire:click="guardarParticipacion"
+                            class="flex-1 bg-[#000b60] text-white py-2.5 rounded-lg font-semibold hover:opacity-90 transition text-sm">
+                        Guardar participación
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    @endif
+
+</div>
+
+@push('scripts')
+<script>
+/* ── Alpine: Ruleta ─────────────────────────────────────────── */
+function pantallaClaseApp() {
+    return {
+        nombreActual:    '',
+        girando:         false,
+        ganadorMostrado: false,
+
+        init() {},
+
+        iniciarAnimacion({ nombres, ganadorNombre }) {
+            if (this.girando) return;
+
+            this.girando         = true;
+            this.ganadorMostrado = false;
+            this.nombreActual    = nombres[0] ?? '';
+
+            const totalMs = 4000;
+            let elapsed   = 0;
+            let delay     = 60;
+            let idx       = 0;
+
+            const paso = () => {
+                idx++;
+                this.nombreActual = nombres[idx % nombres.length];
+                elapsed += delay;
+
+                if (elapsed > totalMs * 0.6) {
+                    delay = Math.min(Math.floor(delay * 1.18), 450);
+                }
+
+                if (elapsed < totalMs) {
+                    setTimeout(paso, delay);
+                } else {
+                    this.nombreActual    = ganadorNombre;
+                    this.girando         = false;
+                    this.ganadorMostrado = true;
+                    setTimeout(() => { this.$wire.seleccionarGanador(); }, 900);
+                }
+            };
+
+            setTimeout(paso, delay);
+        }
+    };
+}
+
+/* ── Alpine: Temporizador ───────────────────────────────────── */
+function timerPantalla() {
+    return {
+        tTotal:    300,
+        tRemaining: 300,
+        tRunning:  false,
+        tFinished: false,
+        tInterval: null,
+        tLabel:    '',
+        tSoundOn:  true,
+        tCircumference: 2 * Math.PI * 120,
+
+        initTimer() {
+            window.addEventListener('keydown', (e) => {
+                if (e.code === 'Space' && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
+                    e.preventDefault();
+                    this.tRunning ? this.tPause() : this.tStart();
+                }
+            });
+        },
+
+        get tProgress()   { return this.tTotal > 0 ? this.tRemaining / this.tTotal : 0; },
+        get tDashOffset() { return this.tCircumference * (1 - this.tProgress); },
+        get tDisplay() {
+            const m = Math.floor(this.tRemaining / 60);
+            const s = this.tRemaining % 60;
+            return String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+        },
+        get tRingColor() {
+            if (this.tFinished)          return '#ef4444';
+            if (this.tProgress <= 0.1)   return '#ef4444';
+            if (this.tProgress <= 0.25)  return '#f97316';
+            return '#000b60';
+        },
+
+        tSetTime(minutes) {
+            this.tStop();
+            this.tTotal     = minutes * 60;
+            this.tRemaining = this.tTotal;
+            this.tFinished  = false;
+        },
+
+        tStart() {
+            if (this.tFinished) { this.tReset(); return; }
+            if (this.tRemaining <= 0) return;
+            this.tRunning  = true;
+            this.tFinished = false;
+            this.tInterval = setInterval(() => {
+                if (this.tRemaining > 0) {
+                    this.tRemaining--;
+                } else {
+                    this.tStop();
+                    this.tFinished = true;
+                    if (this.tSoundOn) this.tPlaySound();
+                }
+            }, 1000);
+        },
+
+        tPause() {
+            this.tRunning = false;
+            clearInterval(this.tInterval);
+            this.tInterval = null;
+        },
+
+        tStop() {
+            this.tRunning = false;
+            if (this.tInterval) { clearInterval(this.tInterval); this.tInterval = null; }
+        },
+
+        tReset() {
+            this.tStop();
+            this.tRemaining = this.tTotal;
+            this.tFinished  = false;
+        },
+
+        tPlaySound() {
+            try {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const beep = (delay, freq, dur) => {
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.connect(gain); gain.connect(ctx.destination);
+                    osc.type = 'sine'; osc.frequency.value = freq;
+                    gain.gain.setValueAtTime(0.6, ctx.currentTime + delay);
+                    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + dur);
+                    osc.start(ctx.currentTime + delay);
+                    osc.stop(ctx.currentTime + delay + dur + 0.05);
+                };
+                beep(0.0, 880, 0.25); beep(0.3, 880, 0.25); beep(0.6, 1100, 0.5);
+            } catch (e) {}
+        },
+    };
+}
+
+/* ── Alpine: Medidor ────────────────────────────────────────── */
+function medidorPantalla() {
+    return {
+        mActivo:   false,
+        mError:    false,
+        mErrorMsg: '',
+        mDb:       0,
+        mNivel:    'silencio',
+        mEtiqueta: 'Silencio',
+        mBars:     Array(32).fill(5),
+        mStream:   null,
+        mContext:  null,
+        mAnimId:   null,
+        mMin: 0, mMax: 0, mSum: 0, mCount: 0,
+
+        initMedidor() {},
+
+        mNivelInfo(db) {
+            if (db < 40)  return ['silencio', 'Silencio'];
+            if (db < 55)  return ['bajo',     'Nivel bajo'];
+            if (db < 70)  return ['moderado', 'Moderado'];
+            if (db < 85)  return ['alto',     'Nivel alto'];
+            return              ['muy_alto',  '¡Muy alto!'];
+        },
+
+        async mActivar() {
+            this.mError = false;
+            try {
+                this.mStream  = await navigator.mediaDevices.getUserMedia({ audio: true });
+                this.mContext = new (window.AudioContext || window.webkitAudioContext)();
+                const source  = this.mContext.createMediaStreamSource(this.mStream);
+                const analyser = this.mContext.createAnalyser();
+                analyser.fftSize = 64;
+                source.connect(analyser);
+                const data = new Uint8Array(analyser.frequencyBinCount);
+
+                this.mActivo = true;
+                this.mMin = 0; this.mMax = 0; this.mSum = 0; this.mCount = 0;
+
+                const loop = () => {
+                    analyser.getByteFrequencyData(data);
+                    const avg = data.reduce((a, b) => a + b, 0) / data.length;
+                    const db  = Math.round(20 * Math.log10((avg / 255) * 100 + 1));
+                    this.mDb  = db;
+                    [this.mNivel, this.mEtiqueta] = this.mNivelInfo(db);
+                    this.mBars = Array.from(data).map(v => Math.max(5, (v / 255) * 100));
+                    if (this.mCount === 0 || db < this.mMin) this.mMin = db;
+                    if (db > this.mMax) this.mMax = db;
+                    this.mSum += db; this.mCount++;
+                    this.mAnimId = requestAnimationFrame(loop);
+                };
+                this.mAnimId = requestAnimationFrame(loop);
+            } catch (e) {
+                this.mError = true;
+                this.mErrorMsg = 'No se pudo acceder al micrófono. Verifica los permisos.';
+            }
+        },
+
+        mDetener() {
+            if (this.mAnimId) cancelAnimationFrame(this.mAnimId);
+            if (this.mStream) this.mStream.getTracks().forEach(t => t.stop());
+            if (this.mContext) this.mContext.close();
+            this.mActivo = false;
+            this.mDb     = 0;
+            this.mNivel  = 'silencio';
+            this.mBars   = Array(32).fill(5);
+        },
+    };
+}
+</script>
+@endpush

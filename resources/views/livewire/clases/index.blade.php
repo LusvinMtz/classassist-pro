@@ -90,7 +90,7 @@
                         <input wire:model="nombre"
                                type="text"
                                placeholder="Ej. Programación Web I"
-                               class="w-full border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#000b60] @error('nombre') border-red-400 @enderror">
+                               class="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#000b60] {{ $errors->has('nombre') ? 'border-red-400' : 'border-gray-200' }}">
                         @error('nombre')
                             <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
                         @enderror
@@ -101,7 +101,7 @@
                         <textarea wire:model="descripcion"
                                   rows="3"
                                   placeholder="Descripción opcional..."
-                                  class="w-full border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#000b60] resize-none @error('descripcion') border-red-400 @enderror"></textarea>
+                                  class="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#000b60] resize-none {{ $errors->has('descripcion') ? 'border-red-400' : 'border-gray-200' }}"></textarea>
                         @error('descripcion')
                             <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
                         @enderror

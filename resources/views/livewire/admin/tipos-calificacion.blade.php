@@ -18,8 +18,10 @@
         <table class="w-full text-sm">
             <thead class="bg-[#e6f6ff] text-[#000b60]">
                 <tr>
+                    <th class="text-center px-4 py-3 font-bold w-16">Orden</th>
                     <th class="text-left px-6 py-3 font-bold">Nombre</th>
                     <th class="text-left px-6 py-3 font-bold">Descripción</th>
+                    <th class="text-center px-4 py-3 font-bold">Punteo máx.</th>
                     <th class="text-center px-4 py-3 font-bold">Calificaciones</th>
                     <th class="text-center px-4 py-3 font-bold w-24">Acciones</th>
                 </tr>
@@ -27,8 +29,10 @@
             <tbody class="divide-y divide-gray-100">
                 @forelse($tipos as $tipo)
                 <tr class="hover:bg-[#f3faff] transition">
+                    <td class="px-4 py-4 text-center text-gray-500">{{ $tipo->orden }}</td>
                     <td class="px-6 py-4 font-semibold text-[#000b60]">{{ $tipo->nombre }}</td>
                     <td class="px-6 py-4 text-gray-500">{{ $tipo->descripcion ?? '—' }}</td>
+                    <td class="px-4 py-4 text-center font-semibold">{{ number_format($tipo->punteo_max, 0) }} pts</td>
                     <td class="px-4 py-4 text-center font-semibold">{{ $tipo->calificaciones_count }}</td>
                     <td class="px-4 py-4">
                         <div class="flex justify-center gap-1">
@@ -47,7 +51,7 @@
                 </tr>
                 @empty
                 <tr>
-                    <td colspan="4" class="px-6 py-16 text-center text-gray-400">
+                    <td colspan="6" class="px-6 py-16 text-center text-gray-400">
                         <span class="material-symbols-outlined" style="font-size:40px">grading</span>
                         <p class="mt-2 text-sm">No hay tipos de calificación registrados</p>
                     </td>
@@ -85,6 +89,21 @@
                     <textarea wire:model="descripcion" rows="3" placeholder="Descripción opcional..."
                               class="w-full border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#000b60] resize-none @error('descripcion') border-red-400 @enderror"></textarea>
                     @error('descripcion') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-sm font-semibold mb-1">Punteo máximo <span class="text-red-500">*</span></label>
+                        <input wire:model="punteoMax" type="number" min="0.01" max="9999" step="0.01" placeholder="100"
+                               class="w-full border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#000b60] @error('punteoMax') border-red-400 @enderror">
+                        @error('punteoMax') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold mb-1">Orden</label>
+                        <input wire:model="orden" type="number" min="0" step="1" placeholder="0"
+                               class="w-full border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#000b60] @error('orden') border-red-400 @enderror">
+                        @error('orden') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
+                    </div>
                 </div>
 
             </div>
