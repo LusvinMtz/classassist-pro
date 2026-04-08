@@ -14,6 +14,10 @@ return new class extends Migration
             $table->date('fecha');
             $table->string('token', 255)->nullable();
             $table->dateTime('expiracion')->nullable();
+            
+            // 👇 Campo agregado directamente
+            $table->boolean('finalizada')->default(false);
+
             $table->timestamps();
         });
     }
