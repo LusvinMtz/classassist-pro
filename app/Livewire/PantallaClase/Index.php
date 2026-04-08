@@ -29,9 +29,55 @@ class Index extends Component
     #[Validate('nullable|string|max:500')]
     public string $comentario = '';
 
+    public function mount(): void
+    {
+        // Sesión pasada por query string desde el listado de sesiones
+        if (request()->filled('sesionId')) {
+            $sesion = Sesion::find((int) request()->query('sesionId'));
+            if ($sesion) {
+                $this->sesionId = $sesion->id;
+                $this->claseId  = $sesion->clase_id;
+                return;
+            }
+        }
+
+        $user = auth()->user();
+        if (!$user->isAdmin()) {
+            $sesionActiva = $this->sesionActivaCatedratico();
+            if ($sesionActiva) {
+                $this->sesionId = $sesionActiva->id;
+                $this->claseId  = $sesionActiva->clase_id;
+            }
+        }
+    }
+
+    private function sesionActivaCatedratico(): ?Sesion
+    {
+        $user = auth()->user();
+        if ($user->isAdmin()) return null;
+        $ids = $user->clasesImpartidas()->pluck('clase.id');
+        return Sesion::whereIn('clase_id', $ids)
+            ->where('finalizada', false)
+            ->latest()
+            ->first();
+    }
+
+    private function queryClases(): \Illuminate\Database\Eloquent\Builder
+    {
+        $user = auth()->user();
+        if ($user->isAdmin()) {
+            return Clase::query();
+        }
+        $ids = $user->clasesImpartidas()->pluck('clase.id');
+        return Clase::whereIn('id', $ids);
+    }
+
     public function render()
     {
-        $clases = Clase::where('usuario_id', auth()->id())->get();
+        $user            = auth()->user();
+        $esCatedratico   = !$user->isAdmin();
+        $sinSesionActiva = $esCatedratico && !$this->sesionId;
+        $clases = $this->queryClases()->orderBy('nombre')->get();
         $sesion = $this->sesionId ? Sesion::with('clase')->find($this->sesionId) : null;
 
         $qrSvg            = null;
@@ -77,7 +123,8 @@ class Index extends Component
         return view('livewire.pantalla-clase.index', compact(
             'clases', 'sesion',
             'qrSvg', 'qrUrl', 'asistentes', 'totalEstudiantes',
-            'presentes', 'historial', 'grupos'
+            'presentes', 'historial', 'grupos',
+            'esCatedratico', 'sinSesionActiva'
         ));
     }
 
@@ -88,7 +135,7 @@ class Index extends Component
             return;
         }
 
-        Clase::where('usuario_id', auth()->id())->findOrFail($this->claseId);
+        $this->queryClases()->findOrFail($this->claseId);
 
         $sesion = Sesion::where('clase_id', $this->claseId)
             ->whereDate('fecha', today())

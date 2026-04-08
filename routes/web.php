@@ -30,6 +30,8 @@ Route::middleware(['auth', 'verified', 'role.catedratico'])->group(function () {
     Route::view('exportacion',       'exportacion.index')      ->name('exportacion.index');
     Route::view('pantalla-clase',    'pantalla-clase.index')   ->name('pantalla-clase.index');
     Route::view('calificaciones',    'calificaciones.index')   ->name('calificaciones.index');
+    Route::view('sedes',             'sedes.index')            ->name('sedes.index');
+    Route::view('asignaciones',      'asignaciones.index')     ->name('asignaciones.index');
 
     // Plantilla de importación de estudiantes
     Route::get('estudiantes/plantilla', function () {

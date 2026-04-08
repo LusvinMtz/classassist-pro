@@ -221,7 +221,7 @@
                         <td class="px-4 py-3 text-center font-bold {{ $pctColor }}">
                             {{ $pct }}%
                         </td>
-                        <td class="px-4 py-3 text-center font-semibold text-gray-700">
+                        <td class="px-4 py-3 text-center font-semibold text-gray-700 dark:text-gray-300">
                             {{ $sesion->participaciones_count }}
                         </td>
                         <td class="px-4 py-3 text-center">

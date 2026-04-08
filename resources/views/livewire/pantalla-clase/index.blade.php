@@ -9,22 +9,24 @@
         <div class="flex items-center gap-4">
             <div>
                 <h1 class="text-3xl font-extrabold">Pantalla de Clase</h1>
-                <p class="text-sm text-gray-500">Vista centralizada para proyección</p>
+                <p class="text-sm text-gray-500 dark:text-gray-400">Vista centralizada para proyección</p>
             </div>
 
-            {{-- Selector de clase --}}
+            {{-- Selector de clase (solo admin) --}}
+            @if(!$esCatedratico)
             <select wire:model.live="claseId"
-                    class="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#000b60] min-w-[220px]">
+                    class="border border-gray-200 dark:border-[#2a3d4a] dark:bg-[#162a35] dark:text-[#dff4ff] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#000b60] min-w-[220px]">
                 <option value="">— Selecciona una clase —</option>
                 @foreach($clases as $clase)
                     <option value="{{ $clase->id }}">{{ $clase->nombre }}</option>
                 @endforeach
             </select>
+            @endif
         </div>
 
         {{-- Tabs --}}
-        @if($claseId && $sesion)
-        <div class="flex items-center gap-1 bg-white rounded-xl shadow p-1">
+        @if($sesion)
+        <div class="flex items-center gap-1 bg-white dark:bg-[#1e333c] rounded-xl shadow p-1">
             @foreach([
                 ['qr',        'qr_code_2',   'QR'],
                 ['ruleta',    'casino',       'Ruleta'],
@@ -36,7 +38,7 @@
                     class="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-bold transition
                            {{ $tab === $id
                                ? 'bg-[#000b60] text-white shadow'
-                               : 'text-gray-500 hover:bg-gray-100' }}">
+                               : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-[#1a2f3c]' }}">
                 <span class="material-symbols-outlined" style="font-size:18px">{{ $icon }}</span>
                 {{ $label }}
             </button>
@@ -46,9 +48,22 @@
 
     </div>
 
-    {{-- Sin clase seleccionada --}}
-    @if(!$claseId)
-    <div class="bg-white rounded-xl shadow flex flex-col items-center justify-center py-32 text-gray-400">
+    {{-- Sin sesión activa (catedrático) --}}
+    @if($sinSesionActiva)
+    <div class="bg-white dark:bg-[#1e333c] rounded-xl shadow flex flex-col items-center justify-center py-32 text-gray-400 dark:text-gray-500">
+        <span class="material-symbols-outlined" style="font-size:72px">cast_for_education</span>
+        <p class="mt-4 font-semibold text-gray-500 text-xl">No tienes una sesión activa</p>
+        <p class="text-sm mt-1">Ve a Sesiones, crea la sesión de hoy y luego regresa aquí.</p>
+        <a href="{{ route('sesiones.index') }}"
+           class="mt-6 bg-[#000b60] text-white px-6 py-2.5 rounded-lg font-semibold hover:opacity-90 transition flex items-center gap-2">
+            <span class="material-symbols-outlined" style="font-size:18px">calendar_add_on</span>
+            Ir a Sesiones
+        </a>
+    </div>
+
+    {{-- Sin clase seleccionada (admin) --}}
+    @elseif(!$esCatedratico && !$claseId)
+    <div class="bg-white dark:bg-[#1e333c] rounded-xl shadow flex flex-col items-center justify-center py-32 text-gray-400 dark:text-gray-500">
         <span class="material-symbols-outlined" style="font-size:72px">cast_for_education</span>
         <p class="mt-4 font-semibold text-gray-500 text-xl">Selecciona una clase para comenzar</p>
         <p class="text-sm mt-1">Todas las herramientas de clase estarán disponibles aquí</p>
@@ -56,7 +71,7 @@
 
     {{-- Sin sesión hoy --}}
     @elseif(!$sesion)
-    <div class="bg-white rounded-xl shadow flex flex-col items-center justify-center py-32 text-gray-400">
+    <div class="bg-white dark:bg-[#1e333c] rounded-xl shadow flex flex-col items-center justify-center py-32 text-gray-400 dark:text-gray-500">
         <span class="material-symbols-outlined" style="font-size:72px">event_busy</span>
         <p class="mt-4 font-semibold text-gray-500 text-xl">No hay sesión activa para hoy</p>
         <p class="text-sm mt-1">Crea una sesión desde el módulo de Sesiones para activar la pantalla</p>
@@ -70,8 +85,8 @@
     @else
 
     {{-- Barra de estado de sesión --}}
-    <div class="bg-[#e6f6ff] rounded-xl px-5 py-2.5 mb-4 flex items-center justify-between text-sm">
-        <div class="flex items-center gap-3 text-[#000b60] font-bold">
+    <div class="bg-[#e6f6ff] dark:bg-[#0d2535] rounded-xl px-5 py-2.5 mb-4 flex items-center justify-between text-sm">
+        <div class="flex items-center gap-3 text-[#000b60] dark:text-[#bcc2ff] font-bold">
             <span class="material-symbols-outlined" style="font-size:17px">calendar_today</span>
             {{ $sesion->clase->nombre }} — Sesión {{ $sesion->fecha->translatedFormat('d/m/Y') }}
             @if($sesion->finalizada)
@@ -80,7 +95,7 @@
                 <span class="bg-green-100 text-green-700 text-xs font-bold px-2 py-0.5 rounded-full">Activa</span>
             @endif
         </div>
-        <div class="flex items-center gap-2 font-bold text-[#000b60]">
+        <div class="flex items-center gap-2 font-bold text-[#000b60] dark:text-[#bcc2ff]">
             <span class="material-symbols-outlined text-green-600" style="font-size:17px">how_to_reg</span>
             {{ $asistentes->count() }} / {{ $totalEstudiantes }} presentes
         </div>
@@ -93,7 +108,7 @@
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
         {{-- Panel QR --}}
-        <div class="bg-white rounded-2xl shadow-lg p-8 flex flex-col items-center">
+        <div class="bg-white dark:bg-[#1e333c] rounded-2xl shadow-lg p-8 flex flex-col items-center">
 
             @if($qrSvg && $sesion->expiracion > now())
                 @php
@@ -103,7 +118,7 @@
                     $segsD = $segsRestantes % 60;
                 @endphp
 
-                <p class="text-xs font-black text-[#000b60] uppercase tracking-widest mb-4">
+                <p class="text-xs font-black text-[#000b60] dark:text-[#bcc2ff] uppercase tracking-widest mb-4">
                     Escanea para registrar asistencia
                 </p>
 
@@ -113,7 +128,7 @@
 
                 <div class="text-center mb-5">
                     <p class="text-xs text-gray-400 mb-1">Tiempo restante</p>
-                    <p class="text-5xl font-black font-mono {{ $segsRestantes <= 60 ? 'text-red-500' : 'text-[#000b60]' }}">
+                    <p class="text-5xl font-black font-mono {{ $segsRestantes <= 60 ? 'text-red-500' : 'text-[#000b60] dark:text-[#bcc2ff]' }}">
                         {{ sprintf('%02d:%02d', $minsD, $segsD) }}
                     </p>
                     @if($segsRestantes <= 60)
@@ -147,7 +162,7 @@
         </div>
 
         {{-- Panel asistentes --}}
-        <div class="bg-white rounded-2xl shadow-lg overflow-hidden flex flex-col">
+        <div class="bg-white dark:bg-[#1e333c] rounded-2xl shadow-lg overflow-hidden flex flex-col">
 
             <div class="bg-[#000b60] px-6 py-4 flex items-center justify-between">
                 <span class="font-black text-white text-lg flex items-center gap-2">
@@ -174,10 +189,10 @@
                 @else
                     <div class="grid grid-cols-2 gap-2 p-4">
                         @foreach($asistentes as $a)
-                            <div class="bg-green-50 border border-green-100 rounded-xl px-3 py-2 flex items-center gap-2">
+                            <div class="bg-green-50 dark:bg-green-900/20 border border-green-100 dark:border-green-800/30 rounded-xl px-3 py-2 flex items-center gap-2">
                                 <span class="material-symbols-outlined text-green-500" style="font-size:16px">check_circle</span>
                                 <div>
-                                    <p class="font-bold text-sm text-gray-800 leading-tight">{{ $a->estudiante->nombre }}</p>
+                                    <p class="font-bold text-sm text-gray-800 dark:text-gray-200 leading-tight">{{ $a->estudiante->nombre }}</p>
                                     <p class="text-xs text-gray-400 font-mono">{{ \Carbon\Carbon::parse($a->fecha_hora)->format('H:i') }}</p>
                                 </div>
                             </div>
@@ -241,9 +256,9 @@
 
             {{-- Historial --}}
             @if($historial->isNotEmpty())
-            <div class="w-full mt-5 bg-white rounded-xl shadow overflow-hidden">
-                <div class="bg-[#e6f6ff] px-5 py-3 flex items-center justify-between">
-                    <span class="font-bold text-[#000b60] text-sm flex items-center gap-2">
+            <div class="w-full mt-5 bg-white dark:bg-[#1e333c] rounded-xl shadow overflow-hidden">
+                <div class="bg-[#e6f6ff] dark:bg-[#0d2535] px-5 py-3 flex items-center justify-between">
+                    <span class="font-bold text-[#000b60] dark:text-[#bcc2ff] text-sm flex items-center gap-2">
                         <span class="material-symbols-outlined" style="font-size:18px">history</span>
                         Participaciones de esta sesión
                     </span>
@@ -252,16 +267,16 @@
                     </span>
                 </div>
                 <table class="w-full text-sm">
-                    <thead class="bg-gray-50">
+                    <thead class="bg-gray-50 dark:bg-[#162a35]">
                         <tr>
-                            <th class="text-left px-4 py-2 font-semibold text-gray-500 text-xs">Estudiante</th>
-                            <th class="text-center px-4 py-2 font-semibold text-gray-500 text-xs">Nota</th>
-                            <th class="text-left px-4 py-2 font-semibold text-gray-500 text-xs">Comentario</th>
+                            <th class="text-left px-4 py-2 font-semibold text-gray-500 dark:text-gray-400 text-xs">Estudiante</th>
+                            <th class="text-center px-4 py-2 font-semibold text-gray-500 dark:text-gray-400 text-xs">Nota</th>
+                            <th class="text-left px-4 py-2 font-semibold text-gray-500 dark:text-gray-400 text-xs">Comentario</th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-gray-50">
+                    <tbody class="divide-y divide-gray-50 dark:divide-[#1a2f3c]">
                         @foreach($historial as $p)
-                        <tr class="hover:bg-[#f3faff]">
+                        <tr class="hover:bg-[#f3faff] dark:hover:bg-[#1a2f3c]">
                             <td class="px-4 py-2.5 font-semibold">{{ $p->estudiante->nombre }}</td>
                             <td class="px-4 py-2.5 text-center">
                                 @if($p->calificacion !== null)
@@ -272,7 +287,7 @@
                                     <span class="text-gray-300 text-xs">—</span>
                                 @endif
                             </td>
-                            <td class="px-4 py-2.5 text-gray-500 text-xs">{{ $p->comentario ?? '—' }}</td>
+                            <td class="px-4 py-2.5 text-gray-500 dark:text-gray-400 text-xs">{{ $p->comentario ?? '—' }}</td>
                         </tr>
                         @endforeach
                     </tbody>
@@ -283,9 +298,9 @@
         </div>
 
         {{-- Lista presentes --}}
-        <div class="bg-white rounded-2xl shadow overflow-hidden h-fit">
-            <div class="bg-[#e6f6ff] px-5 py-3 flex items-center justify-between">
-                <span class="font-bold text-[#000b60] text-sm flex items-center gap-2">
+        <div class="bg-white dark:bg-[#1e333c] rounded-2xl shadow overflow-hidden h-fit">
+            <div class="bg-[#e6f6ff] dark:bg-[#0d2535] px-5 py-3 flex items-center justify-between">
+                <span class="font-bold text-[#000b60] dark:text-[#bcc2ff] text-sm flex items-center gap-2">
                     <span class="material-symbols-outlined" style="font-size:18px">how_to_reg</span>
                     Presentes hoy
                 </span>
@@ -296,10 +311,10 @@
             @if($presentes->isEmpty())
                 <p class="text-center text-gray-400 py-8 text-sm">Sin asistencia registrada</p>
             @else
-            <ul class="divide-y divide-gray-50 max-h-[500px] overflow-y-auto">
+            <ul class="divide-y divide-gray-50 dark:divide-[#1a2f3c] max-h-[500px] overflow-y-auto">
                 @foreach($presentes as $i => $e)
-                <li class="px-4 py-2.5 flex items-center gap-3 text-sm hover:bg-[#f3faff]"
-                    :class="nombreActual === '{{ $e->nombre }}' && (girando || ganadorMostrado) ? 'bg-yellow-50 font-bold' : ''">
+                <li class="px-4 py-2.5 flex items-center gap-3 text-sm hover:bg-[#f3faff] dark:hover:bg-[#1a2f3c]"
+                    :class="nombreActual === '{{ $e->nombre }}' && (girando || ganadorMostrado) ? 'bg-yellow-50 dark:bg-yellow-900/20 font-bold' : ''">
                     <span class="text-gray-300 text-xs w-5 text-right">{{ $i + 1 }}</span>
                     <span>{{ $e->nombre }}</span>
                 </li>
@@ -315,7 +330,7 @@
     {{-- ═══════════════════════════════════════════════════════════════ --}}
     @elseif($tab === 'grupos')
     @if($grupos->isEmpty())
-        <div class="bg-white rounded-2xl shadow flex flex-col items-center justify-center py-24 text-gray-400">
+        <div class="bg-white dark:bg-[#1e333c] rounded-2xl shadow flex flex-col items-center justify-center py-24 text-gray-400 dark:text-gray-500">
             <span class="material-symbols-outlined" style="font-size:72px">group_add</span>
             <p class="mt-4 font-semibold text-gray-500 text-xl">No hay grupos guardados para esta sesión</p>
             <p class="text-sm mt-1">Genera y guarda los grupos desde el módulo de Grupos Aleatorios</p>
@@ -373,9 +388,9 @@
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
 
             {{-- Reloj --}}
-            <div class="lg:col-span-2 bg-white rounded-2xl shadow-lg flex flex-col items-center py-10 px-6">
+            <div class="lg:col-span-2 bg-white dark:bg-[#1e333c] rounded-2xl shadow-lg flex flex-col items-center py-10 px-6">
 
-                <p class="text-sm font-bold text-[#000b60] uppercase tracking-widest mb-6 min-h-[20px]"
+                <p class="text-sm font-bold text-[#000b60] dark:text-[#bcc2ff] uppercase tracking-widest mb-6 min-h-[20px]"
                    x-text="tLabel"></p>
 
                 <div class="relative flex items-center justify-center mb-8">
@@ -405,7 +420,7 @@
 
                 <div class="flex items-center gap-4">
                     <button @click="tReset()"
-                            class="w-12 h-12 rounded-full border-2 border-gray-200 flex items-center justify-center text-gray-400 hover:border-gray-400 hover:text-gray-600 transition">
+                            class="w-12 h-12 rounded-full border-2 border-gray-200 dark:border-[#2a3d4a] flex items-center justify-center text-gray-400 hover:border-gray-400 hover:text-gray-600 transition">
                         <span class="material-symbols-outlined" style="font-size:22px">replay</span>
                     </button>
                     <button @click="tRunning ? tPause() : tStart()"
@@ -421,31 +436,31 @@
 
             {{-- Configuración timer --}}
             <div class="flex flex-col gap-4">
-                <div class="bg-white rounded-2xl shadow p-5">
-                    <p class="text-xs font-bold text-[#000b60] uppercase tracking-widest mb-4">Tiempos rápidos</p>
+                <div class="bg-white dark:bg-[#1e333c] rounded-2xl shadow p-5">
+                    <p class="text-xs font-bold text-[#000b60] dark:text-[#bcc2ff] uppercase tracking-widest mb-4">Tiempos rápidos</p>
                     <div class="grid grid-cols-3 gap-2">
                         @foreach([1, 2, 3, 5, 10, 15, 20, 25, 30] as $min)
                         <button @click="tSetTime({{ $min }})"
-                                :class="tTotal === {{ $min * 60 }} && !tRunning && !tFinished ? 'bg-[#000b60] text-white' : 'bg-[#e6f6ff] text-[#000b60] hover:bg-blue-100'"
+                                :class="tTotal === {{ $min * 60 }} && !tRunning && !tFinished ? 'bg-[#000b60] text-white' : 'bg-[#e6f6ff] dark:bg-[#0d2535] text-[#000b60] dark:text-[#bcc2ff] hover:bg-blue-100 dark:hover:bg-[#162a35]'"
                                 class="py-2.5 rounded-xl text-sm font-bold transition">
                             {{ $min }}<span class="font-normal text-xs opacity-70"> min</span>
                         </button>
                         @endforeach
                     </div>
                 </div>
-                <div class="bg-white rounded-2xl shadow p-5">
+                <div class="bg-white dark:bg-[#1e333c] rounded-2xl shadow p-5">
                     <p class="text-xs font-bold text-[#000b60] uppercase tracking-widest mb-3">Etiqueta (opcional)</p>
                     <input x-model="tLabel" type="text" maxlength="40"
                            placeholder="Ej. Examen parcial, Debate..."
-                           class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#000b60]">
+                           class="w-full border border-gray-200 dark:border-[#2a3d4a] dark:bg-[#162a35] dark:text-[#dff4ff] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#000b60]">
                 </div>
-                <div class="bg-white rounded-2xl shadow p-5 flex items-center justify-between">
+                <div class="bg-white dark:bg-[#1e333c] rounded-2xl shadow p-5 flex items-center justify-between">
                     <div>
-                        <p class="text-sm font-bold text-[#000b60]">Sonido al finalizar</p>
+                        <p class="text-sm font-bold text-[#000b60] dark:text-[#bcc2ff]">Sonido al finalizar</p>
                         <p class="text-xs text-gray-400">Alerta sonora al llegar a cero</p>
                     </div>
                     <button @click="tSoundOn = !tSoundOn"
-                            :class="tSoundOn ? 'bg-[#000b60]' : 'bg-gray-200'"
+                            :class="tSoundOn ? 'bg-[#000b60]' : 'bg-gray-200 dark:bg-[#2a3d4a]'"
                             class="relative w-12 h-6 rounded-full transition-colors flex-shrink-0">
                         <span :class="tSoundOn ? 'translate-x-6' : 'translate-x-1'"
                               class="absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform block"></span>
@@ -464,7 +479,7 @@
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
 
-            <div class="lg:col-span-2 bg-white rounded-2xl shadow-lg p-8 flex flex-col items-center">
+            <div class="lg:col-span-2 bg-white dark:bg-[#1e333c] rounded-2xl shadow-lg p-8 flex flex-col items-center">
 
                 <div x-show="!mActivo && !mError" class="text-center py-8">
                     <span class="material-symbols-outlined text-gray-300" style="font-size:80px">mic_off</span>
@@ -481,7 +496,7 @@
                     <span class="material-symbols-outlined text-red-400" style="font-size:64px">mic_off</span>
                     <p class="mt-3 font-semibold text-red-500" x-text="mErrorMsg"></p>
                     <button @click="mActivar()"
-                            class="mt-4 border border-gray-200 text-gray-600 px-6 py-2 rounded-lg text-sm hover:bg-gray-50 transition">
+                            class="mt-4 border border-gray-200 dark:border-[#2a3d4a] text-gray-600 dark:text-gray-400 px-6 py-2 rounded-lg text-sm hover:bg-gray-50 dark:hover:bg-[#1a2f3c] transition">
                         Reintentar
                     </button>
                 </div>
@@ -523,17 +538,17 @@
                     {{-- Semáforo --}}
                     <div class="flex items-center gap-4">
                         <div class="w-10 h-10 rounded-full flex items-center justify-center transition-all"
-                             :class="(mNivel === 'silencio' || mNivel === 'bajo') ? 'bg-green-500 shadow-lg shadow-green-500/50' : 'bg-gray-100'"></div>
+                             :class="(mNivel === 'silencio' || mNivel === 'bajo') ? 'bg-green-500 shadow-lg shadow-green-500/50' : 'bg-gray-100 dark:bg-[#2a3d4a]'"></div>
                         <div class="w-10 h-10 rounded-full flex items-center justify-center transition-all"
-                             :class="mNivel === 'moderado' ? 'bg-yellow-400 shadow-lg shadow-yellow-400/50' : 'bg-gray-100'"></div>
+                             :class="mNivel === 'moderado' ? 'bg-yellow-400 shadow-lg shadow-yellow-400/50' : 'bg-gray-100 dark:bg-[#2a3d4a]'"></div>
                         <div class="w-10 h-10 rounded-full flex items-center justify-center transition-all"
-                             :class="mNivel === 'alto' ? 'bg-orange-400 shadow-lg shadow-orange-400/50' : 'bg-gray-100'"></div>
+                             :class="mNivel === 'alto' ? 'bg-orange-400 shadow-lg shadow-orange-400/50' : 'bg-gray-100 dark:bg-[#2a3d4a]'"></div>
                         <div class="w-10 h-10 rounded-full flex items-center justify-center transition-all"
-                             :class="mNivel === 'muy_alto' ? 'bg-red-500 shadow-lg shadow-red-500/50' : 'bg-gray-100'"></div>
+                             :class="mNivel === 'muy_alto' ? 'bg-red-500 shadow-lg shadow-red-500/50' : 'bg-gray-100 dark:bg-[#2a3d4a]'"></div>
                     </div>
 
                     <button @click="mDetener()"
-                            class="border border-gray-200 text-gray-500 px-6 py-2.5 rounded-xl font-semibold hover:bg-gray-50 transition flex items-center gap-2">
+                            class="border border-gray-200 dark:border-[#2a3d4a] text-gray-500 dark:text-gray-400 px-6 py-2.5 rounded-xl font-semibold hover:bg-gray-50 dark:hover:bg-[#1a2f3c] transition flex items-center gap-2">
                         <span class="material-symbols-outlined" style="font-size:18px">stop</span>
                         Detener
                     </button>
@@ -543,8 +558,8 @@
 
             {{-- Panel info --}}
             <div class="flex flex-col gap-4">
-                <div class="bg-white rounded-2xl shadow p-5">
-                    <p class="text-xs font-bold text-[#000b60] uppercase tracking-widest mb-4">Niveles de referencia</p>
+                <div class="bg-white dark:bg-[#1e333c] rounded-2xl shadow p-5">
+                    <p class="text-xs font-bold text-[#000b60] dark:text-[#bcc2ff] uppercase tracking-widest mb-4">Niveles de referencia</p>
                     <div class="space-y-3 text-sm">
                         @foreach([
                             ['bg-green-500','Silencio','< 40 dB'],
@@ -561,8 +576,8 @@
                         @endforeach
                     </div>
                 </div>
-                <div class="bg-white rounded-2xl shadow p-5" x-show="mActivo">
-                    <p class="text-xs font-bold text-[#000b60] uppercase tracking-widest mb-4">Estadísticas sesión</p>
+                <div class="bg-white dark:bg-[#1e333c] rounded-2xl shadow p-5" x-show="mActivo">
+                    <p class="text-xs font-bold text-[#000b60] dark:text-[#bcc2ff] uppercase tracking-widest mb-4">Estadísticas sesión</p>
                     <div class="space-y-3 text-sm">
                         <div class="flex justify-between">
                             <span class="text-gray-500">Mínimo</span>
@@ -591,32 +606,32 @@
     {{-- ═══════════════════════════════════════════════════════════════ --}}
     @if($showModal)
     <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
+        <div class="bg-white dark:bg-[#1e333c] rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
             <div class="bg-[#000b60] px-6 py-5 text-center">
                 <p class="text-yellow-300 text-xs font-bold uppercase tracking-widest mb-1">Estudiante seleccionado</p>
                 <h2 class="text-white text-2xl font-black">{{ $ganadorNombre }}</h2>
             </div>
             <div class="p-6">
-                <p class="text-sm text-gray-500 text-center mb-5">Registra la participación (opcional)</p>
+                <p class="text-sm text-gray-500 dark:text-gray-400 text-center mb-5">Registra la participación (opcional)</p>
                 <div class="space-y-4">
                     <div>
                         <label class="block text-sm font-semibold mb-1">Calificación <span class="text-gray-400 font-normal">(0 – 10)</span></label>
                         <input wire:model="calificacion" type="number" min="0" max="10" step="0.5"
                                placeholder="Ej. 8.5"
-                               class="w-full border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#000b60] @error('calificacion') border-red-400 @enderror">
+                               class="w-full border border-gray-200 dark:border-[#2a3d4a] dark:bg-[#162a35] dark:text-[#dff4ff] rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#000b60] @error('calificacion') border-red-400 @enderror">
                         @error('calificacion') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
                     </div>
                     <div>
                         <label class="block text-sm font-semibold mb-1">Comentario</label>
                         <textarea wire:model="comentario" rows="3"
                                   placeholder="Observaciones sobre la participación..."
-                                  class="w-full border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#000b60] resize-none @error('comentario') border-red-400 @enderror"></textarea>
+                                  class="w-full border border-gray-200 dark:border-[#2a3d4a] dark:bg-[#162a35] dark:text-[#dff4ff] rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#000b60] resize-none @error('comentario') border-red-400 @enderror"></textarea>
                         @error('comentario') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
                     </div>
                 </div>
                 <div class="flex gap-3 mt-6">
                     <button wire:click="omitir"
-                            class="flex-1 border border-gray-200 text-gray-500 py-2.5 rounded-lg hover:bg-gray-50 font-semibold transition text-sm">
+                            class="flex-1 border border-gray-200 dark:border-[#2a3d4a] text-gray-500 dark:text-gray-400 py-2.5 rounded-lg hover:bg-gray-50 dark:hover:bg-[#1a2f3c] font-semibold transition text-sm">
                         Omitir
                     </button>
                     <button wire:click="guardarParticipacion"

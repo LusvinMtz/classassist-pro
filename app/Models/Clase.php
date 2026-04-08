@@ -12,11 +12,38 @@ class Clase extends Model
         'nombre',
         'descripcion',
         'usuario_id',
+        'carrera_id',
+        'codigo',
+        'ciclo',
     ];
+
+    protected $casts = ['ciclo' => 'integer'];
+
+    /** Semestre según ciclo: impares = Ene-Jun, pares = Jul-Dic */
+    public function getSemestreAttribute(): ?string
+    {
+        if (!$this->ciclo) return null;
+        return $this->ciclo % 2 !== 0 ? 'Enero – Junio' : 'Julio – Diciembre';
+    }
 
     public function catedratico()
     {
         return $this->belongsTo(User::class, 'usuario_id');
+    }
+
+    public function carrera()
+    {
+        return $this->belongsTo(Carrera::class, 'carrera_id');
+    }
+
+    public function catedraticos()
+    {
+        return $this->belongsToMany(User::class, 'clase_catedratico', 'clase_id', 'usuario_id');
+    }
+
+    public function asignaciones()
+    {
+        return $this->hasMany(Asignacion::class, 'clase_id');
     }
 
     public function estudiantes()

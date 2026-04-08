@@ -14,11 +14,21 @@ class Table extends Component
 
     public function mount(): void
     {
-        $primera = Clase::where('usuario_id', auth()->id())
-            ->orderBy('nombre')->first();
+        $primera = $this->queryClases()->orderBy('nombre')->first();
         if ($primera) {
             $this->claseId = $primera->id;
         }
+    }
+
+    private function queryClases(): \Illuminate\Database\Eloquent\Builder
+    {
+        $user = auth()->user();
+        if ($user->isAdmin()) {
+            return Clase::query();
+        }
+        // Catedrático: solo sus clases asignadas
+        $ids = $user->clasesImpartidas()->pluck('clase.id');
+        return Clase::whereIn('id', $ids);
     }
 
     public function updatedClaseId(): void
@@ -35,8 +45,7 @@ class Table extends Component
 
     private function computeKpis(): array
     {
-        $userId   = auth()->id();
-        $claseIds = Clase::where('usuario_id', $userId)->pluck('id');
+        $claseIds = $this->queryClases()->pluck('id');
 
         $totalClases = $claseIds->count();
 
@@ -216,7 +225,7 @@ class Table extends Component
 
     public function render(): \Illuminate\View\View
     {
-        $clases    = Clase::where('usuario_id', auth()->id())->orderBy('nombre')->get();
+        $clases    = $this->queryClases()->orderBy('nombre')->get();
         $chartData = $this->buildChartData();
 
         $sesionesRecientes = $this->claseId

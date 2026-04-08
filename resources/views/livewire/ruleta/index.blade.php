@@ -8,40 +8,55 @@
     <div class="flex flex-wrap justify-between items-center mb-6 gap-3">
         <div>
             <h1 class="text-3xl font-extrabold">Ruleta de Participación</h1>
-            <p class="text-sm text-gray-500">Selección aleatoria entre estudiantes presentes</p>
+            <p class="text-sm text-gray-500 dark:text-gray-400">Selección aleatoria entre estudiantes presentes</p>
         </div>
+        @if(!$esCatedratico)
         <div class="flex items-center gap-3">
-            <label class="text-sm font-semibold text-[#000b60]">Clase:</label>
+            <label class="text-sm font-semibold text-[#000b60] dark:text-[#bcc2ff]">Clase:</label>
             <select wire:model.live="claseId"
-                    class="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#000b60] min-w-[220px]">
+                    class="border border-gray-200 dark:border-[#2a3d4a] dark:bg-[#162a35] dark:text-[#dff4ff] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#000b60] min-w-[220px]">
                 <option value="">— Selecciona una clase —</option>
                 @foreach($clases as $clase)
                     <option value="{{ $clase->id }}">{{ $clase->nombre }}</option>
                 @endforeach
             </select>
         </div>
+        @endif
     </div>
 
-    @if(!$claseId)
+    @if($sinSesionActiva)
 
-        <div class="bg-white rounded-xl shadow flex flex-col items-center justify-center py-24 text-gray-400">
+        <div class="bg-white dark:bg-[#1e333c] rounded-xl shadow flex flex-col items-center justify-center py-24 text-gray-400 dark:text-gray-500">
             <span class="material-symbols-outlined" style="font-size:64px">casino</span>
-            <p class="mt-4 font-semibold text-gray-500 text-lg">Selecciona una clase para comenzar</p>
+            <p class="mt-4 font-semibold text-gray-500 dark:text-gray-400 text-lg">No tienes una sesión activa</p>
+            <p class="text-sm mt-1">Ve a Sesiones, crea la sesión de hoy y luego regresa aquí.</p>
+            <a href="{{ route('sesiones.index') }}"
+               class="mt-6 bg-[#000b60] text-white px-6 py-2.5 rounded-lg font-semibold hover:opacity-90 transition flex items-center gap-2">
+                <span class="material-symbols-outlined" style="font-size:18px">calendar_add_on</span>
+                Ir a Sesiones
+            </a>
+        </div>
+
+    @elseif(!$esCatedratico && !$claseId)
+
+        <div class="bg-white dark:bg-[#1e333c] rounded-xl shadow flex flex-col items-center justify-center py-24 text-gray-400 dark:text-gray-500">
+            <span class="material-symbols-outlined" style="font-size:64px">casino</span>
+            <p class="mt-4 font-semibold text-gray-500 dark:text-gray-400 text-lg">Selecciona una clase para comenzar</p>
         </div>
 
     @elseif(!$sesion)
 
-        <div class="bg-white rounded-xl shadow flex flex-col items-center justify-center py-24 text-gray-400">
+        <div class="bg-white dark:bg-[#1e333c] rounded-xl shadow flex flex-col items-center justify-center py-24 text-gray-400 dark:text-gray-500">
             <span class="material-symbols-outlined" style="font-size:64px">event_busy</span>
-            <p class="mt-4 font-semibold text-gray-500 text-lg">No hay sesión activa para hoy</p>
+            <p class="mt-4 font-semibold text-gray-500 dark:text-gray-400 text-lg">No hay sesión activa para hoy</p>
             <p class="text-sm mt-1">Inicia una sesión desde el módulo de Asistencia primero</p>
         </div>
 
     @elseif($presentes->isEmpty())
 
-        <div class="bg-white rounded-xl shadow flex flex-col items-center justify-center py-24 text-gray-400">
+        <div class="bg-white dark:bg-[#1e333c] rounded-xl shadow flex flex-col items-center justify-center py-24 text-gray-400 dark:text-gray-500">
             <span class="material-symbols-outlined" style="font-size:64px">person_off</span>
-            <p class="mt-4 font-semibold text-gray-500 text-lg">No hay estudiantes con asistencia registrada</p>
+            <p class="mt-4 font-semibold text-gray-500 dark:text-gray-400 text-lg">No hay estudiantes con asistencia registrada</p>
             <p class="text-sm mt-1">Los estudiantes deben registrar asistencia para participar en la ruleta</p>
         </div>
 
@@ -111,9 +126,9 @@
 
                 {{-- Historial de participaciones --}}
                 @if($historial->isNotEmpty())
-                    <div class="w-full mt-6 bg-white rounded-xl shadow overflow-hidden">
-                        <div class="bg-[#e6f6ff] px-5 py-3 flex items-center justify-between">
-                            <span class="font-bold text-[#000b60] flex items-center gap-2 text-sm">
+                    <div class="w-full mt-6 bg-white dark:bg-[#1e333c] rounded-xl shadow overflow-hidden">
+                        <div class="bg-[#e6f6ff] dark:bg-[#0d2535] px-5 py-3 flex items-center justify-between">
+                            <span class="font-bold text-[#000b60] dark:text-[#bcc2ff] flex items-center gap-2 text-sm">
                                 <span class="material-symbols-outlined" style="font-size:18px">history</span>
                                 Participaciones de esta sesión
                             </span>
@@ -122,16 +137,16 @@
                             </span>
                         </div>
                         <table class="w-full text-sm">
-                            <thead class="bg-gray-50">
+                            <thead class="bg-gray-50 dark:bg-[#162a35]">
                                 <tr>
-                                    <th class="text-left px-4 py-2 font-semibold text-gray-500 text-xs">Estudiante</th>
-                                    <th class="text-center px-4 py-2 font-semibold text-gray-500 text-xs">Nota</th>
-                                    <th class="text-left px-4 py-2 font-semibold text-gray-500 text-xs">Comentario</th>
+                                    <th class="text-left px-4 py-2 font-semibold text-gray-500 dark:text-gray-400 text-xs">Estudiante</th>
+                                    <th class="text-center px-4 py-2 font-semibold text-gray-500 dark:text-gray-400 text-xs">Nota</th>
+                                    <th class="text-left px-4 py-2 font-semibold text-gray-500 dark:text-gray-400 text-xs">Comentario</th>
                                 </tr>
                             </thead>
-                            <tbody class="divide-y divide-gray-50">
+                            <tbody class="divide-y divide-gray-50 dark:divide-[#1a2f3c]">
                                 @foreach($historial as $p)
-                                    <tr class="hover:bg-[#f3faff]">
+                                    <tr class="hover:bg-[#f3faff] dark:hover:bg-[#1a2f3c]">
                                         <td class="px-4 py-2.5 font-semibold">{{ $p->estudiante->nombre }}</td>
                                         <td class="px-4 py-2.5 text-center">
                                             @if($p->calificacion !== null)
@@ -142,7 +157,7 @@
                                                 <span class="text-gray-300 text-xs">—</span>
                                             @endif
                                         </td>
-                                        <td class="px-4 py-2.5 text-gray-500 text-xs">{{ $p->comentario ?? '—' }}</td>
+                                        <td class="px-4 py-2.5 text-gray-500 dark:text-gray-400 text-xs">{{ $p->comentario ?? '—' }}</td>
                                     </tr>
                                 @endforeach
                             </tbody>
@@ -153,9 +168,9 @@
             </div>
 
             {{-- Panel lateral: Lista de presentes --}}
-            <div class="bg-white rounded-xl shadow overflow-hidden h-fit">
-                <div class="bg-[#e6f6ff] px-5 py-3 flex items-center justify-between">
-                    <span class="font-bold text-[#000b60] flex items-center gap-2 text-sm">
+            <div class="bg-white dark:bg-[#1e333c] rounded-xl shadow overflow-hidden h-fit">
+                <div class="bg-[#e6f6ff] dark:bg-[#0d2535] px-5 py-3 flex items-center justify-between">
+                    <span class="font-bold text-[#000b60] dark:text-[#bcc2ff] flex items-center gap-2 text-sm">
                         <span class="material-symbols-outlined" style="font-size:18px">how_to_reg</span>
                         Presentes hoy
                     </span>
@@ -163,11 +178,11 @@
                         {{ $presentes->count() }}
                     </span>
                 </div>
-                <ul class="divide-y divide-gray-50 max-h-96 overflow-y-auto">
+                <ul class="divide-y divide-gray-50 dark:divide-[#1a2f3c] max-h-96 overflow-y-auto">
                     @foreach($presentes as $i => $e)
-                        <li class="px-4 py-2.5 flex items-center gap-3 hover:bg-[#f3faff] text-sm"
+                        <li class="px-4 py-2.5 flex items-center gap-3 hover:bg-[#f3faff] dark:hover:bg-[#1a2f3c] text-sm"
                             :class="nombreActual === '{{ $e->nombre }}' && (girando || ganadorMostrado)
-                                ? 'bg-yellow-50 font-bold' : ''">
+                                ? 'bg-yellow-50 dark:bg-yellow-900/20 font-bold' : ''">
                             <span class="text-gray-300 text-xs w-5 text-right">{{ $i + 1 }}</span>
                             <span>{{ $e->nombre }}</span>
                         </li>
@@ -183,7 +198,7 @@
     {{-- MODAL: Registrar participación --}}
     @if($showModal)
         <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
+            <div class="bg-white dark:bg-[#1e333c] rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
 
                 {{-- Header dorado --}}
                 <div class="bg-[#000b60] px-6 py-5 text-center">
@@ -192,7 +207,7 @@
                 </div>
 
                 <div class="p-6">
-                    <p class="text-sm text-gray-500 text-center mb-5">
+                    <p class="text-sm text-gray-500 dark:text-gray-400 text-center mb-5">
                         Registra la participación del estudiante (opcional)
                     </p>
 
@@ -206,7 +221,7 @@
                                    type="number"
                                    min="0" max="10" step="0.5"
                                    placeholder="Ej. 8.5"
-                                   class="w-full border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#000b60] @error('calificacion') border-red-400 @enderror">
+                                   class="w-full border border-gray-200 dark:border-[#2a3d4a] dark:bg-[#162a35] dark:text-[#dff4ff] rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#000b60] @error('calificacion') border-red-400 @enderror">
                             @error('calificacion')
                                 <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
                             @enderror
@@ -217,7 +232,7 @@
                             <textarea wire:model="comentario"
                                       rows="3"
                                       placeholder="Observaciones sobre la participación..."
-                                      class="w-full border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#000b60] resize-none @error('comentario') border-red-400 @enderror"></textarea>
+                                      class="w-full border border-gray-200 dark:border-[#2a3d4a] dark:bg-[#162a35] dark:text-[#dff4ff] rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#000b60] resize-none @error('comentario') border-red-400 @enderror"></textarea>
                             @error('comentario')
                                 <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
                             @enderror
@@ -227,7 +242,7 @@
 
                     <div class="flex gap-3 mt-6">
                         <button wire:click="omitir"
-                                class="flex-1 border border-gray-200 text-gray-500 py-2.5 rounded-lg hover:bg-gray-50 font-semibold transition text-sm">
+                                class="flex-1 border border-gray-200 dark:border-[#2a3d4a] text-gray-500 dark:text-gray-400 py-2.5 rounded-lg hover:bg-gray-50 dark:hover:bg-[#1a2f3c] font-semibold transition text-sm">
                             Omitir
                         </button>
                         <button wire:click="guardarParticipacion"
@@ -296,4 +311,3 @@ function ruletaApp() {
 }
 </script>
 @endpush
-

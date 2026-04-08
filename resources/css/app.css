@@ -1,3 +1,17 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Native select/input color scheme — makes browser dropdown popups dark */
+@media (prefers-color-scheme: dark) {
+    select,
+    input[type="text"],
+    input[type="number"],
+    input[type="email"],
+    input[type="password"],
+    input[type="date"],
+    input[type="time"],
+    textarea {
+        color-scheme: dark;
+    }
+}

@@ -3,19 +3,19 @@
 
     <div class="mb-6">
         <h1 class="text-3xl font-extrabold">Medidor de Ruido</h1>
-        <p class="text-sm text-gray-500">Monitoreo del nivel de sonido en tiempo real usando el micrófono</p>
+        <p class="text-sm text-gray-500 dark:text-gray-400">Monitoreo del nivel de sonido en tiempo real usando el micrófono</p>
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
 
         {{-- Panel principal --}}
-        <div class="lg:col-span-2 bg-white rounded-2xl shadow-lg p-8 flex flex-col items-center">
+        <div class="lg:col-span-2 bg-white dark:bg-[#1e333c] rounded-2xl shadow-lg p-8 flex flex-col items-center">
 
             {{-- Sin permiso / inactivo --}}
             <div x-show="!activo && !error" class="text-center py-8">
-                <span class="material-symbols-outlined text-gray-300" style="font-size:80px">mic_off</span>
-                <p class="mt-4 font-semibold text-gray-500 text-lg">Micrófono inactivo</p>
-                <p class="text-sm text-gray-400 mb-6">Haz clic en "Activar" para comenzar a medir el ruido</p>
+                <span class="material-symbols-outlined text-gray-300 dark:text-gray-600" style="font-size:80px">mic_off</span>
+                <p class="mt-4 font-semibold text-gray-500 dark:text-gray-400 text-lg">Micrófono inactivo</p>
+                <p class="text-sm text-gray-400 dark:text-gray-500 mb-6">Haz clic en "Activar" para comenzar a medir el ruido</p>
                 <button @click="activar()"
                         class="bg-[#000b60] text-white px-8 py-3 rounded-xl font-bold text-base hover:opacity-90 transition flex items-center gap-2 mx-auto">
                     <span class="material-symbols-outlined">mic</span>
@@ -28,7 +28,7 @@
                 <span class="material-symbols-outlined text-red-400" style="font-size:64px">mic_off</span>
                 <p class="mt-3 font-semibold text-red-500" x-text="errorMsg"></p>
                 <button @click="activar()"
-                        class="mt-4 border border-gray-200 text-gray-600 px-6 py-2 rounded-lg text-sm hover:bg-gray-50 transition">
+                        class="mt-4 border border-gray-200 dark:border-[#2a3d4a] text-gray-600 dark:text-gray-400 px-6 py-2 rounded-lg text-sm hover:bg-gray-50 dark:hover:bg-[#1a2f3c] transition">
                     Reintentar
                 </button>
             </div>
@@ -74,7 +74,7 @@
                         </template>
                     </div>
                     {{-- Escala --}}
-                    <div class="flex justify-between text-xs text-gray-300 mt-1 px-0.5">
+                    <div class="flex justify-between text-xs text-gray-300 dark:text-gray-600 mt-1 px-0.5">
                         <span>0 dB</span>
                         <span>silencio</span>
                         <span>conversación</span>
@@ -86,13 +86,13 @@
                 {{-- Barra de umbral --}}
                 <div class="w-full max-w-lg">
                     <div class="flex items-center justify-between mb-1">
-                        <label class="text-xs font-semibold text-gray-500">Umbral de alerta</label>
-                        <span class="text-xs font-bold text-[#000b60]" x-text="umbral + ' dB'"></span>
+                        <label class="text-xs font-semibold text-gray-500 dark:text-gray-400">Umbral de alerta</label>
+                        <span class="text-xs font-bold text-[#000b60] dark:text-[#bcc2ff]" x-text="umbral + ' dB'"></span>
                     </div>
                     <input x-model.number="umbral" type="range" min="30" max="90" step="5"
                            class="w-full accent-[#000b60]">
                     <div x-show="superaUmbral"
-                         class="mt-3 bg-red-50 border border-red-200 rounded-xl px-4 py-3 flex items-center gap-3 text-red-600 font-semibold text-sm animate-pulse">
+                         class="mt-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700/50 rounded-xl px-4 py-3 flex items-center gap-3 text-red-600 dark:text-red-400 font-semibold text-sm animate-pulse">
                         <span class="material-symbols-outlined">warning</span>
                         ¡Nivel de ruido supera el umbral establecido!
                     </div>
@@ -100,7 +100,7 @@
 
                 {{-- Botón detener --}}
                 <button @click="detener()"
-                        class="border-2 border-gray-200 text-gray-500 px-6 py-2.5 rounded-xl font-semibold text-sm hover:border-red-300 hover:text-red-500 transition flex items-center gap-2">
+                        class="border-2 border-gray-200 dark:border-[#2a3d4a] text-gray-500 dark:text-gray-400 px-6 py-2.5 rounded-xl font-semibold text-sm hover:border-red-300 hover:text-red-500 dark:hover:border-red-500/50 dark:hover:text-red-400 transition flex items-center gap-2">
                     <span class="material-symbols-outlined" style="font-size:18px">mic_off</span>
                     Detener
                 </button>
@@ -113,55 +113,55 @@
         <div class="flex flex-col gap-4">
 
             {{-- Niveles de referencia --}}
-            <div class="bg-white rounded-2xl shadow p-5">
-                <p class="text-xs font-bold text-[#000b60] uppercase tracking-widest mb-4">Niveles de referencia</p>
+            <div class="bg-white dark:bg-[#1e333c] rounded-2xl shadow p-5">
+                <p class="text-xs font-bold text-[#000b60] dark:text-[#bcc2ff] uppercase tracking-widest mb-4">Niveles de referencia</p>
                 <ul class="space-y-3 text-sm">
                     <li class="flex items-center gap-3">
                         <span class="w-3 h-3 rounded-full bg-green-400 flex-shrink-0"></span>
-                        <span class="text-gray-600"><span class="font-bold">0–40 dB</span> — Silencio / muy tranquilo</span>
+                        <span class="text-gray-600 dark:text-gray-400"><span class="font-bold">0–40 dB</span> — Silencio / muy tranquilo</span>
                     </li>
                     <li class="flex items-center gap-3">
                         <span class="w-3 h-3 rounded-full bg-green-500 flex-shrink-0"></span>
-                        <span class="text-gray-600"><span class="font-bold">40–55 dB</span> — Clase en orden</span>
+                        <span class="text-gray-600 dark:text-gray-400"><span class="font-bold">40–55 dB</span> — Clase en orden</span>
                     </li>
                     <li class="flex items-center gap-3">
                         <span class="w-3 h-3 rounded-full bg-yellow-400 flex-shrink-0"></span>
-                        <span class="text-gray-600"><span class="font-bold">55–70 dB</span> — Conversación normal</span>
+                        <span class="text-gray-600 dark:text-gray-400"><span class="font-bold">55–70 dB</span> — Conversación normal</span>
                     </li>
                     <li class="flex items-center gap-3">
                         <span class="w-3 h-3 rounded-full bg-orange-400 flex-shrink-0"></span>
-                        <span class="text-gray-600"><span class="font-bold">70–85 dB</span> — Ruido elevado</span>
+                        <span class="text-gray-600 dark:text-gray-400"><span class="font-bold">70–85 dB</span> — Ruido elevado</span>
                     </li>
                     <li class="flex items-center gap-3">
                         <span class="w-3 h-3 rounded-full bg-red-500 flex-shrink-0"></span>
-                        <span class="text-gray-600"><span class="font-bold">85+ dB</span> — Muy ruidoso</span>
+                        <span class="text-gray-600 dark:text-gray-400"><span class="font-bold">85+ dB</span> — Muy ruidoso</span>
                     </li>
                 </ul>
             </div>
 
             {{-- Estadísticas de sesión --}}
-            <div class="bg-white rounded-2xl shadow p-5" x-show="activo">
-                <p class="text-xs font-bold text-[#000b60] uppercase tracking-widest mb-4">Esta sesión</p>
+            <div class="bg-white dark:bg-[#1e333c] rounded-2xl shadow p-5" x-show="activo">
+                <p class="text-xs font-bold text-[#000b60] dark:text-[#bcc2ff] uppercase tracking-widest mb-4">Esta sesión</p>
                 <div class="space-y-3">
                     <div class="flex justify-between items-center">
-                        <span class="text-sm text-gray-500">Máximo</span>
+                        <span class="text-sm text-gray-500 dark:text-gray-400">Máximo</span>
                         <span class="font-black text-red-500" x-text="maxDb + ' dB'"></span>
                     </div>
                     <div class="flex justify-between items-center">
-                        <span class="text-sm text-gray-500">Mínimo</span>
+                        <span class="text-sm text-gray-500 dark:text-gray-400">Mínimo</span>
                         <span class="font-black text-green-600" x-text="minDb + ' dB'"></span>
                     </div>
                     <div class="flex justify-between items-center">
-                        <span class="text-sm text-gray-500">Promedio</span>
-                        <span class="font-black text-[#000b60]" x-text="avgDb + ' dB'"></span>
+                        <span class="text-sm text-gray-500 dark:text-gray-400">Promedio</span>
+                        <span class="font-black text-[#000b60] dark:text-[#bcc2ff]" x-text="avgDb + ' dB'"></span>
                     </div>
                     <div class="flex justify-between items-center">
-                        <span class="text-sm text-gray-500">Alertas</span>
+                        <span class="text-sm text-gray-500 dark:text-gray-400">Alertas</span>
                         <span class="font-black text-orange-500" x-text="alertas"></span>
                     </div>
                 </div>
                 <button @click="resetStats()"
-                        class="mt-4 w-full text-xs text-gray-400 hover:text-gray-600 transition">
+                        class="mt-4 w-full text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition">
                     Reiniciar estadísticas
                 </button>
             </div>

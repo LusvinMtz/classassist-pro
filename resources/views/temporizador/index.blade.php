@@ -8,16 +8,16 @@
     {{-- Encabezado --}}
     <div class="mb-6">
         <h1 class="text-3xl font-extrabold">Temporizador</h1>
-        <p class="text-sm text-gray-500">Cuenta regresiva configurable para actividades en clase</p>
+        <p class="text-sm text-gray-500 dark:text-gray-400">Cuenta regresiva configurable para actividades en clase</p>
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
 
         {{-- Panel principal: reloj --}}
-        <div class="lg:col-span-2 bg-white rounded-2xl shadow-lg flex flex-col items-center py-10 px-6">
+        <div class="lg:col-span-2 bg-white dark:bg-[#1e333c] rounded-2xl shadow-lg flex flex-col items-center py-10 px-6">
 
             {{-- Etiqueta de actividad --}}
-            <p class="text-sm font-bold text-[#000b60] uppercase tracking-widest mb-6 min-h-[20px]"
+            <p class="text-sm font-bold text-[#000b60] dark:text-[#bcc2ff] uppercase tracking-widest mb-6 min-h-[20px]"
                x-text="label"></p>
 
             {{-- Círculo SVG --}}
@@ -63,7 +63,7 @@
 
                 {{-- Reset --}}
                 <button @click="reset()"
-                        class="w-12 h-12 rounded-full border-2 border-gray-200 flex items-center justify-center text-gray-400 hover:border-gray-400 hover:text-gray-600 transition">
+                        class="w-12 h-12 rounded-full border-2 border-gray-200 dark:border-[#2a3d4a] flex items-center justify-center text-gray-400 hover:border-gray-400 dark:hover:border-[#bcc2ff] hover:text-gray-600 dark:hover:text-[#bcc2ff] transition">
                     <span class="material-symbols-outlined" style="font-size:22px">replay</span>
                 </button>
 
@@ -82,7 +82,7 @@
 
                 {{-- Fullscreen --}}
                 <button @click="toggleFullscreen()"
-                        class="w-12 h-12 rounded-full border-2 border-gray-200 flex items-center justify-center text-gray-400 hover:border-gray-400 hover:text-gray-600 transition">
+                        class="w-12 h-12 rounded-full border-2 border-gray-200 dark:border-[#2a3d4a] flex items-center justify-center text-gray-400 hover:border-gray-400 dark:hover:border-[#bcc2ff] hover:text-gray-600 dark:hover:text-[#bcc2ff] transition">
                     <span class="material-symbols-outlined" style="font-size:22px"
                           x-text="isFullscreen ? 'fullscreen_exit' : 'fullscreen'">
                     </span>
@@ -90,7 +90,7 @@
 
             </div>
 
-            <p class="text-xs text-gray-300 mt-5">Barra espaciadora para iniciar / pausar</p>
+            <p class="text-xs text-gray-300 dark:text-gray-600 mt-5">Barra espaciadora para iniciar / pausar</p>
 
         </div>
 
@@ -98,14 +98,14 @@
         <div class="flex flex-col gap-4">
 
             {{-- Presets --}}
-            <div class="bg-white rounded-2xl shadow p-5">
-                <p class="text-xs font-bold text-[#000b60] uppercase tracking-widest mb-4">Tiempos rápidos</p>
+            <div class="bg-white dark:bg-[#1e333c] rounded-2xl shadow p-5">
+                <p class="text-xs font-bold text-[#000b60] dark:text-[#bcc2ff] uppercase tracking-widest mb-4">Tiempos rápidos</p>
                 <div class="grid grid-cols-3 gap-2">
                     @foreach([1, 2, 3, 5, 10, 15, 20, 25, 30] as $min)
                         <button @click="setTime({{ $min }})"
                                 :class="total === {{ $min * 60 }} && !running && !finished
                                     ? 'bg-[#000b60] text-white'
-                                    : 'bg-[#e6f6ff] text-[#000b60] hover:bg-blue-100'"
+                                    : 'bg-[#e6f6ff] dark:bg-[#0d2535] text-[#000b60] dark:text-[#bcc2ff] hover:bg-blue-100 dark:hover:bg-[#162a35]'"
                                 class="py-2.5 rounded-xl text-sm font-bold transition">
                             {{ $min }}<span class="font-normal text-xs opacity-70"> min</span>
                         </button>
@@ -114,20 +114,20 @@
             </div>
 
             {{-- Tiempo personalizado --}}
-            <div class="bg-white rounded-2xl shadow p-5">
-                <p class="text-xs font-bold text-[#000b60] uppercase tracking-widest mb-4">Tiempo personalizado</p>
+            <div class="bg-white dark:bg-[#1e333c] rounded-2xl shadow p-5">
+                <p class="text-xs font-bold text-[#000b60] dark:text-[#bcc2ff] uppercase tracking-widest mb-4">Tiempo personalizado</p>
                 <div class="flex gap-2 mb-3">
                     <div class="flex-1">
-                        <label class="text-xs text-gray-400 mb-1 block">Min</label>
+                        <label class="text-xs text-gray-400 dark:text-gray-500 mb-1 block">Min</label>
                         <input x-model.number="customMin"
                                type="number" min="0" max="99"
-                               class="w-full border border-gray-200 rounded-lg px-3 py-2 text-center text-lg font-black focus:outline-none focus:ring-2 focus:ring-[#000b60]">
+                               class="w-full border border-gray-200 dark:border-[#2a3d4a] dark:bg-[#162a35] dark:text-[#dff4ff] rounded-lg px-3 py-2 text-center text-lg font-black focus:outline-none focus:ring-2 focus:ring-[#000b60]">
                     </div>
                     <div class="flex-1">
-                        <label class="text-xs text-gray-400 mb-1 block">Seg</label>
+                        <label class="text-xs text-gray-400 dark:text-gray-500 mb-1 block">Seg</label>
                         <input x-model.number="customSec"
                                type="number" min="0" max="59"
-                               class="w-full border border-gray-200 rounded-lg px-3 py-2 text-center text-lg font-black focus:outline-none focus:ring-2 focus:ring-[#000b60]">
+                               class="w-full border border-gray-200 dark:border-[#2a3d4a] dark:bg-[#162a35] dark:text-[#dff4ff] rounded-lg px-3 py-2 text-center text-lg font-black focus:outline-none focus:ring-2 focus:ring-[#000b60]">
                     </div>
                 </div>
                 <button @click="setCustomTime()"
@@ -138,23 +138,23 @@
             </div>
 
             {{-- Etiqueta --}}
-            <div class="bg-white rounded-2xl shadow p-5">
-                <p class="text-xs font-bold text-[#000b60] uppercase tracking-widest mb-3">Etiqueta (opcional)</p>
+            <div class="bg-white dark:bg-[#1e333c] rounded-2xl shadow p-5">
+                <p class="text-xs font-bold text-[#000b60] dark:text-[#bcc2ff] uppercase tracking-widest mb-3">Etiqueta (opcional)</p>
                 <input x-model="label"
                        type="text"
                        maxlength="40"
                        placeholder="Ej. Examen parcial, Debate..."
-                       class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#000b60]">
+                       class="w-full border border-gray-200 dark:border-[#2a3d4a] dark:bg-[#162a35] dark:text-[#dff4ff] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#000b60]">
             </div>
 
             {{-- Sonido --}}
-            <div class="bg-white rounded-2xl shadow p-5 flex items-center justify-between">
+            <div class="bg-white dark:bg-[#1e333c] rounded-2xl shadow p-5 flex items-center justify-between">
                 <div>
-                    <p class="text-sm font-bold text-[#000b60]">Sonido al finalizar</p>
+                    <p class="text-sm font-bold text-[#000b60] dark:text-[#bcc2ff]">Sonido al finalizar</p>
                     <p class="text-xs text-gray-400">Alerta sonora al llegar a cero</p>
                 </div>
                 <button @click="soundOn = !soundOn"
-                        :class="soundOn ? 'bg-[#000b60]' : 'bg-gray-200'"
+                        :class="soundOn ? 'bg-[#000b60]' : 'bg-gray-200 dark:bg-[#2a3d4a]'"
                         class="relative w-12 h-6 rounded-full transition-colors duration-200 flex-shrink-0">
                     <span :class="soundOn ? 'translate-x-6' : 'translate-x-1'"
                           class="absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 block">

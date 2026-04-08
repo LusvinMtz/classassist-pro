@@ -124,17 +124,30 @@
             Exportar Excel
         </a>
 
-        <a href="{{ route('pantalla-clase.index') }}"
-           class="{{ request()->routeIs('pantalla-clase.*') ? $active : $inactive }}">
-            <span class="material-symbols-outlined">cast_for_education</span>
-            Pantalla de Clase
-        </a>
-
         <a href="{{ route('calificaciones.index') }}"
            class="{{ request()->routeIs('calificaciones.*') ? $active : $inactive }}">
             <span class="material-symbols-outlined">grading</span>
             Calificaciones
         </a>
+
+        @if($user?->isAdmin())
+        <div class="mx-4 my-2 border-t border-[#000b60]/10 dark:border-[#bcc2ff]/10"></div>
+        <div class="px-4 pb-1">
+            <p class="text-[10px] font-black uppercase tracking-widest text-[#000b60]/40 dark:text-[#bcc2ff]/40">Universidad</p>
+        </div>
+
+        <a href="{{ route('sedes.index') }}"
+           class="{{ request()->routeIs('sedes.*') ? $active : $inactive }}">
+            <span class="material-symbols-outlined">location_city</span>
+            Sedes
+        </a>
+
+        <a href="{{ route('asignaciones.index') }}"
+           class="{{ request()->routeIs('asignaciones.*') ? $active : $inactive }}">
+            <span class="material-symbols-outlined">assignment_ind</span>
+            Asignaciones
+        </a>
+        @endif
 
     </nav>
 

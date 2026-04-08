@@ -37,7 +37,7 @@ class Index extends Component
 
     public function render()
     {
-        $clases      = Clase::where('usuario_id', auth()->id())->get();
+        $clases = Clase::whereHas('catedraticos', function ($q) {$q->where('users.id', auth()->id());})->get();
         $estudiantes = collect();
 
         if ($this->claseId) {
