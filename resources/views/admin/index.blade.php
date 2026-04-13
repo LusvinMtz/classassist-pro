@@ -10,50 +10,29 @@
         $totalCatedraticos  = \App\Models\User::whereHas('roles', fn($q) => $q->where('nombre', 'catedratico'))->count();
         $totalClases        = \App\Models\Clase::count();
         $totalTipos         = \App\Models\TipoCalificacion::count();
+        $totalSedes         = \App\Models\Sede::count();
     @endphp
 
     {{-- KPI Cards --}}
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+    <div class="grid gap-4 mb-8" style="grid-template-columns: repeat(5, minmax(0, 1fr));">
 
-        <div class="bg-white dark:bg-[#1e333c] rounded-xl shadow p-5 flex items-start gap-3">
-            <div class="bg-[#e6f6ff] dark:bg-[#0d2535] rounded-lg p-2.5">
-                <span class="material-symbols-outlined text-[#000b60] dark:text-[#bcc2ff]" style="font-size:22px">manage_accounts</span>
+        @foreach([
+            ['manage_accounts', $totalUsuarios,     'Usuarios totales'],
+            ['person_book',     $totalCatedraticos, 'Catedráticos'],
+            ['school',          $totalClases,        'Clases registradas'],
+            ['grading',         $totalTipos,         'Tipos de calificación'],
+            ['location_city',   $totalSedes,         'Sedes'],
+        ] as [$icon, $valor, $label])
+        <div class="bg-white dark:bg-[#1e333c] rounded-xl shadow p-4 flex items-center gap-3 min-w-0">
+            <div class="bg-[#e6f6ff] dark:bg-[#0d2535] rounded-lg p-2 shrink-0">
+                <span class="material-symbols-outlined text-[#000b60] dark:text-[#bcc2ff]" style="font-size:20px">{{ $icon }}</span>
             </div>
-            <div>
-                <p class="text-2xl font-black text-[#000b60] dark:text-[#bcc2ff] leading-none">{{ $totalUsuarios }}</p>
-                <p class="text-xs text-gray-500 dark:text-gray-400 font-medium mt-1">Usuarios totales</p>
+            <div class="min-w-0">
+                <p class="text-2xl font-black text-[#000b60] dark:text-[#bcc2ff] leading-none">{{ $valor }}</p>
+                <p class="text-xs text-gray-500 dark:text-gray-400 font-medium mt-1 truncate">{{ $label }}</p>
             </div>
         </div>
-
-        <div class="bg-white dark:bg-[#1e333c] rounded-xl shadow p-5 flex items-start gap-3">
-            <div class="bg-[#e6f6ff] dark:bg-[#0d2535] rounded-lg p-2.5">
-                <span class="material-symbols-outlined text-[#000b60] dark:text-[#bcc2ff]" style="font-size:22px">person_book</span>
-            </div>
-            <div>
-                <p class="text-2xl font-black text-[#000b60] dark:text-[#bcc2ff] leading-none">{{ $totalCatedraticos }}</p>
-                <p class="text-xs text-gray-500 dark:text-gray-400 font-medium mt-1">Catedráticos</p>
-            </div>
-        </div>
-
-        <div class="bg-white dark:bg-[#1e333c] rounded-xl shadow p-5 flex items-start gap-3">
-            <div class="bg-[#e6f6ff] dark:bg-[#0d2535] rounded-lg p-2.5">
-                <span class="material-symbols-outlined text-[#000b60] dark:text-[#bcc2ff]" style="font-size:22px">school</span>
-            </div>
-            <div>
-                <p class="text-2xl font-black text-[#000b60] dark:text-[#bcc2ff] leading-none">{{ $totalClases }}</p>
-                <p class="text-xs text-gray-500 dark:text-gray-400 font-medium mt-1">Clases registradas</p>
-            </div>
-        </div>
-
-        <div class="bg-white dark:bg-[#1e333c] rounded-xl shadow p-5 flex items-start gap-3">
-            <div class="bg-[#e6f6ff] dark:bg-[#0d2535] rounded-lg p-2.5">
-                <span class="material-symbols-outlined text-[#000b60] dark:text-[#bcc2ff]" style="font-size:22px">grading</span>
-            </div>
-            <div>
-                <p class="text-2xl font-black text-[#000b60] dark:text-[#bcc2ff] leading-none">{{ $totalTipos }}</p>
-                <p class="text-xs text-gray-500 dark:text-gray-400 font-medium mt-1">Tipos de calificación</p>
-            </div>
-        </div>
+        @endforeach
 
     </div>
 
@@ -108,8 +87,20 @@
             <span class="material-symbols-outlined text-gray-300 dark:text-gray-600 ml-auto" style="font-size:24px">chevron_right</span>
         </a>
 
+        <a href="{{ route('sedes.index') }}"
+           class="bg-white dark:bg-[#1e333c] rounded-xl shadow p-6 flex items-center gap-5 hover:shadow-md transition group">
+            <div class="bg-[#000b60] rounded-xl p-4">
+                <span class="material-symbols-outlined text-white" style="font-size:32px">location_city</span>
+            </div>
+            <div>
+                <h3 class="text-lg font-black text-[#000b60] dark:text-[#bcc2ff] group-hover:underline">Sedes</h3>
+                <p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Gestionar sedes y sus carreras asignadas</p>
+            </div>
+            <span class="material-symbols-outlined text-gray-300 dark:text-gray-600 ml-auto" style="font-size:24px">chevron_right</span>
+        </a>
+
         <a href="{{ route('admin.bitacora') }}"
-           class="bg-white dark:bg-[#1e333c] rounded-xl shadow p-6 flex items-center gap-5 hover:shadow-md transition group md:col-span-2">
+           class="bg-white dark:bg-[#1e333c] rounded-xl shadow p-6 flex items-center gap-5 hover:shadow-md transition group">
             <div class="bg-[#000b60] rounded-xl p-4">
                 <span class="material-symbols-outlined text-white" style="font-size:32px">policy</span>
             </div>

@@ -16,6 +16,7 @@ use App\Services\BitacoraService;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Events\Logout;
 use Illuminate\Support\Facades\Event;
+use Carbon\Carbon;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -24,6 +25,9 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        // ── Locale español para Carbon (fechas en español en toda la app) ─────
+        Carbon::setLocale('es');
+
         // ── Observers ────────────────────────────────────────────────────────
         User::observe(UserObserver::class);
         Clase::observe(ClaseObserver::class);

@@ -1,15 +1,27 @@
 <div>
 
     {{-- ════ ENCABEZADO ════════════════════════════════════════════════════════ --}}
-    <div class="flex flex-wrap items-start justify-between gap-4 mb-6">
-        <div>
+    <div class="mb-6">
+        {{-- Fila superior: volver + badge --}}
+        <div class="flex items-center justify-between mb-4">
             <a href="{{ route('sesiones.index') }}"
-               class="inline-flex items-center gap-1 text-sm text-[#000b60] dark:text-[#bcc2ff] hover:underline mb-2">
-                <span class="material-symbols-outlined" style="font-size:16px">arrow_back</span>
-                Volver a sesiones
+               class="inline-flex items-center gap-2 text-xs font-bold px-3 py-1.5 rounded-lg
+                      bg-[#e6f6ff] dark:bg-[#0d2535] text-[#000b60] dark:text-[#bcc2ff]
+                      hover:bg-[#000b60] hover:text-white dark:hover:bg-[#303c9a] dark:hover:text-white
+                      transition">
+                <span class="material-symbols-outlined" style="font-size:15px">arrow_back</span>
+                Sesiones
             </a>
+            <span class="inline-flex items-center gap-1 bg-gray-100 dark:bg-[#2a3d4a] text-gray-600 dark:text-gray-300 text-xs font-bold px-3 py-1.5 rounded-full">
+                <span class="material-symbols-outlined" style="font-size:14px">lock</span>
+                Sesión finalizada
+            </span>
+        </div>
+
+        {{-- Título centrado --}}
+        <div class="text-center">
             <h1 class="text-3xl font-extrabold">{{ $sesion->clase->nombre }}</h1>
-            <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+            <p class="text-sm text-gray-500 dark:text-gray-400 mt-1 capitalize">
                 {{ $sesion->fecha->translatedFormat('l d \d\e F \d\e Y') }}
                 @if($sesion->clase->catedratico)
                     &mdash; {{ $sesion->clase->catedratico->nombre }}
@@ -19,86 +31,98 @@
                 @endif
             </p>
         </div>
-        <span class="inline-flex items-center gap-1 bg-gray-100 dark:bg-[#2a3d4a] text-gray-600 dark:text-gray-300 text-xs font-bold px-3 py-1.5 rounded-full">
-            <span class="material-symbols-outlined" style="font-size:14px">lock</span>
-            Sesión finalizada
-        </span>
     </div>
 
-    {{-- ════ KPIs ════════════════════════════════════════════════════════════════ --}}
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+    {{-- ════ KPIs — una fila de 5, responsive ══════════════════════════════════ --}}
+    @php
+        $nivelColor = '';
+        $durMin = 0; $durSeg = 0;
+        if ($ruidoResumen) {
+            $nivelColor = match($ruidoResumen->nivel_predominante) {
+                'silencio' => 'text-blue-400',
+                'bajo'     => 'text-green-500',
+                'moderado' => 'text-yellow-500',
+                'alto'     => 'text-orange-500',
+                'muy_alto' => 'text-red-600',
+                default    => 'text-gray-400',
+            };
+            $durMin = intdiv($ruidoResumen->duracion_segundos, 60);
+            $durSeg = $ruidoResumen->duracion_segundos % 60;
+        }
+    @endphp
 
-        <div class="bg-white dark:bg-[#1e333c] rounded-xl shadow px-5 py-4">
-            <p class="text-xs font-bold text-gray-400 uppercase tracking-wide">Inscritos</p>
+    <div class="grid gap-4 mb-8" style="grid-template-columns: repeat(5, minmax(0, 1fr));">
+
+        {{-- Inscritos --}}
+        <div class="bg-white dark:bg-[#1e333c] rounded-xl shadow px-4 py-3">
+            <p class="text-xs font-bold text-gray-400 uppercase tracking-wide truncate">Inscritos</p>
             <p class="text-3xl font-extrabold text-[#000b60] dark:text-[#dff4ff] mt-1">{{ $totalInscritos }}</p>
         </div>
 
-        <div class="bg-white dark:bg-[#1e333c] rounded-xl shadow px-5 py-4">
-            <p class="text-xs font-bold text-gray-400 uppercase tracking-wide">Presentes</p>
+        {{-- Presentes --}}
+        <div class="bg-white dark:bg-[#1e333c] rounded-xl shadow px-4 py-3">
+            <p class="text-xs font-bold text-gray-400 uppercase tracking-wide truncate">Presentes</p>
             <p class="text-3xl font-extrabold text-green-600 mt-1">{{ $asistencias->count() }}</p>
-            <p class="text-xs text-gray-400 mt-0.5">{{ $pctAsistencia }}% de asistencia</p>
+            <p class="text-xs text-gray-400 mt-0.5">{{ $pctAsistencia }}% asistencia</p>
         </div>
 
-        <div class="bg-white dark:bg-[#1e333c] rounded-xl shadow px-5 py-4">
-            <p class="text-xs font-bold text-gray-400 uppercase tracking-wide">Ausentes</p>
+        {{-- Ausentes --}}
+        <div class="bg-white dark:bg-[#1e333c] rounded-xl shadow px-4 py-3">
+            <p class="text-xs font-bold text-gray-400 uppercase tracking-wide truncate">Ausentes</p>
             <p class="text-3xl font-extrabold text-red-500 mt-1">{{ $ausentes->count() }}</p>
             <p class="text-xs text-gray-400 mt-0.5">{{ $totalInscritos > 0 ? round($ausentes->count() / $totalInscritos * 100, 1) : 0 }}% inasistencia</p>
         </div>
 
-        <div class="bg-white dark:bg-[#1e333c] rounded-xl shadow px-5 py-4">
-            <p class="text-xs font-bold text-gray-400 uppercase tracking-wide">Participaciones</p>
+        {{-- Participaciones --}}
+        <div class="bg-white dark:bg-[#1e333c] rounded-xl shadow px-4 py-3">
+            <p class="text-xs font-bold text-gray-400 uppercase tracking-wide truncate">Participaciones</p>
             <p class="text-3xl font-extrabold text-[#000b60] dark:text-[#bcc2ff] mt-1">{{ $participaciones->count() }}</p>
             @if($promedioRuleta !== null)
                 <p class="text-xs text-gray-400 mt-0.5">Prom. {{ number_format($promedioRuleta, 1) }} pts</p>
             @endif
         </div>
 
-    </div>
-
-    {{-- Segunda fila KPI: grupos y ruido --}}
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-
-        <div class="bg-white dark:bg-[#1e333c] rounded-xl shadow px-5 py-4">
-            <p class="text-xs font-bold text-gray-400 uppercase tracking-wide">Grupos</p>
+        {{-- Grupos --}}
+        <div class="bg-white dark:bg-[#1e333c] rounded-xl shadow px-4 py-3">
+            <p class="text-xs font-bold text-gray-400 uppercase tracking-wide truncate">Grupos</p>
             <p class="text-3xl font-extrabold text-[#000b60] dark:text-[#dff4ff] mt-1">{{ $grupos->count() }}</p>
             @if($grupos->isNotEmpty())
-                <p class="text-xs text-gray-400 mt-0.5">{{ $grupos->sum(fn($g) => $g->miembros->count()) }} est. distribuidos</p>
+                <p class="text-xs text-gray-400 mt-0.5">{{ $grupos->sum(fn($g) => $g->miembros->count()) }} distribuidos</p>
             @endif
         </div>
 
-        @if($ruidoResumen)
-            <div class="bg-white dark:bg-[#1e333c] rounded-xl shadow px-5 py-4">
-                <p class="text-xs font-bold text-gray-400 uppercase tracking-wide">Ruido Promedio</p>
-                <p class="text-3xl font-extrabold text-amber-500 mt-1">{{ $ruidoResumen->db_promedio }} <span class="text-base font-semibold">dB</span></p>
-                <p class="text-xs text-gray-400 mt-0.5">{{ $ruidoResumen->total_alertas }} alerta(s)</p>
-            </div>
-
-            <div class="bg-white dark:bg-[#1e333c] rounded-xl shadow px-5 py-4 col-span-2">
-                <p class="text-xs font-bold text-gray-400 uppercase tracking-wide">Nivel Predominante</p>
-                @php
-                    $nivelColor = match($ruidoResumen->nivel_predominante) {
-                        'silencio'  => 'text-blue-400',
-                        'bajo'      => 'text-green-500',
-                        'moderado'  => 'text-yellow-500',
-                        'alto'      => 'text-orange-500',
-                        'muy_alto'  => 'text-red-600',
-                        default     => 'text-gray-400',
-                    };
-                    $durMin = intdiv($ruidoResumen->duracion_segundos, 60);
-                    $durSeg = $ruidoResumen->duracion_segundos % 60;
-                @endphp
-                <p class="text-2xl font-extrabold {{ $nivelColor }} mt-1 capitalize">
-                    {{ str_replace('_', ' ', $ruidoResumen->nivel_predominante ?? 'N/D') }}
-                </p>
-                <p class="text-xs text-gray-400 mt-0.5">
-                    Duración: {{ $durMin }}m {{ $durSeg }}s &nbsp;|&nbsp;
-                    Min: {{ $ruidoResumen->db_minimo }} dB &nbsp;|&nbsp;
-                    Máx: {{ $ruidoResumen->db_maximo }} dB
-                </p>
-            </div>
-        @endif
-
     </div>
+
+    {{-- Ruido (fila adicional si existe) --}}
+    @if($ruidoResumen)
+    <div class="grid gap-4 mb-8" style="grid-template-columns: repeat(5, minmax(0, 1fr));">
+        <div class="bg-white dark:bg-[#1e333c] rounded-xl shadow px-4 py-3">
+            <p class="text-xs font-bold text-gray-400 uppercase tracking-wide truncate">Ruido prom.</p>
+            <p class="text-3xl font-extrabold text-amber-500 mt-1">{{ $ruidoResumen->db_promedio }}<span class="text-base font-semibold ml-1">dB</span></p>
+            <p class="text-xs text-gray-400 mt-0.5">{{ $ruidoResumen->total_alertas }} alerta(s)</p>
+        </div>
+        <div class="bg-white dark:bg-[#1e333c] rounded-xl shadow px-4 py-3" style="grid-column: span 2;">
+            <p class="text-xs font-bold text-gray-400 uppercase tracking-wide truncate">Nivel predominante</p>
+            <p class="text-2xl font-extrabold {{ $nivelColor }} mt-1 capitalize">
+                {{ str_replace('_', ' ', $ruidoResumen->nivel_predominante ?? 'N/D') }}
+            </p>
+            <p class="text-xs text-gray-400 mt-0.5">
+                {{ $durMin }}m {{ $durSeg }}s &nbsp;·&nbsp;
+                {{ $ruidoResumen->db_minimo }} / {{ $ruidoResumen->db_maximo }} dB
+            </p>
+        </div>
+        <div class="bg-white dark:bg-[#1e333c] rounded-xl shadow px-4 py-3">
+            <p class="text-xs font-bold text-gray-400 uppercase tracking-wide truncate">Min / Máx</p>
+            <p class="text-2xl font-extrabold text-[#000b60] dark:text-[#dff4ff] mt-1">{{ $ruidoResumen->db_minimo }}<span class="text-sm font-semibold ml-1">dB</span></p>
+            <p class="text-xs text-gray-400 mt-0.5">Máx: {{ $ruidoResumen->db_maximo }} dB</p>
+        </div>
+        <div class="bg-white dark:bg-[#1e333c] rounded-xl shadow px-4 py-3">
+            <p class="text-xs font-bold text-gray-400 uppercase tracking-wide truncate">Duración</p>
+            <p class="text-2xl font-extrabold text-[#000b60] dark:text-[#dff4ff] mt-1">{{ $durMin }}<span class="text-sm font-semibold ml-1">min</span></p>
+            <p class="text-xs text-gray-400 mt-0.5">{{ $durSeg }}s · {{ $ruidoResumen->sesiones }} medición(es)</p>
+        </div>
+    </div>
+    @endif
 
     {{-- ════ ASISTENCIA ══════════════════════════════════════════════════════════ --}}
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
@@ -131,8 +155,8 @@
                                              class="w-9 h-9 rounded-full object-cover border-2 border-green-400 hover:border-[#000b60] transition cursor-zoom-in">
                                     </button>
                                 @else
-                                    <div class="w-9 h-9 rounded-full bg-[#000b60] dark:bg-[#303c9a] flex items-center justify-center text-white text-xs font-black flex-shrink-0">
-                                        {{ strtoupper(substr($a->nombre, 0, 1)) }}
+                                    <div class="w-9 h-9 rounded-full bg-gray-100 dark:bg-[#2a3d4a] border-2 border-gray-200 dark:border-[#3a4d5a] flex items-center justify-center flex-shrink-0">
+                                        <span class="material-symbols-outlined text-gray-400 dark:text-gray-500" style="font-size:20px">person</span>
                                     </div>
                                 @endif
                                 <span class="text-sm font-semibold text-[#000b60] dark:text-[#dff4ff]">{{ $a->nombre }}</span>
@@ -331,6 +355,88 @@
                 </table>
             </div>
         </div>
+    @endif
+
+    {{-- ════ MAPA DE REGISTROS ══════════════════════════════════════════════════ --}}
+    @if($marcadores->isNotEmpty())
+        <div class="bg-white dark:bg-[#1e333c] rounded-xl shadow overflow-hidden mb-6">
+            <div class="flex items-center gap-2 px-5 py-3 border-b border-gray-100 dark:border-[#2a3d4a]">
+                <span class="material-symbols-outlined text-[#000b60] dark:text-[#bcc2ff]" style="font-size:18px">location_on</span>
+                <h2 class="font-extrabold text-sm uppercase tracking-wide text-[#000b60] dark:text-[#dff4ff]">
+                    Ubicaciones de Registro
+                    <span class="text-gray-400 font-normal normal-case ml-1">({{ $marcadores->count() }} con GPS)</span>
+                </h2>
+            </div>
+            <div id="mapa-asistencia" class="w-full" style="height:420px;"></div>
+        </div>
+
+        @push('scripts')
+        <script>
+        window.__mapaMarcadores = @json($marcadores);
+
+        function initMapaAsistencia() {
+            const el = document.getElementById('mapa-asistencia');
+            if (!el || !window.google) return;
+
+            const markers = window.__mapaMarcadores;
+            const bounds  = new google.maps.LatLngBounds();
+
+            const map = new google.maps.Map(el, {
+                mapTypeId       : 'roadmap',
+                mapTypeControl  : false,
+                fullscreenControl: true,
+                streetViewControl: false,
+            });
+
+            const infoWindow = new google.maps.InfoWindow();
+
+            markers.forEach(function (m) {
+                const pos = { lat: m.lat, lng: m.lng };
+                bounds.extend(pos);
+
+                const marker = new google.maps.Marker({
+                    position : pos,
+                    map      : map,
+                    title    : m.nombre,
+                    icon     : {
+                        path        : google.maps.SymbolPath.CIRCLE,
+                        scale       : 10,
+                        fillColor   : '#000b60',
+                        fillOpacity : 1,
+                        strokeColor : '#ffffff',
+                        strokeWeight: 2,
+                    },
+                });
+
+                const content = `
+                    <div style="text-align:center;padding:4px 8px;min-width:130px;">
+                        ${m.selfie
+                            ? `<img src="${m.selfie}" style="width:72px;height:72px;object-fit:cover;border-radius:50%;margin:0 auto 6px;display:block;border:2.5px solid #22c55e;">`
+                            : `<div style="width:56px;height:56px;border-radius:50%;background:#e6f0ff;display:flex;align-items:center;justify-content:center;margin:0 auto 6px;font-size:28px;color:#000b60;">👤</div>`
+                        }
+                        <p style="font-weight:700;font-size:13px;margin:0;color:#000b60;">${m.nombre}</p>
+                        ${m.hora ? `<p style="color:#6b7280;font-size:11px;margin:3px 0 0;">⏱ ${m.hora}</p>` : ''}
+                    </div>`;
+
+                marker.addListener('click', function () {
+                    infoWindow.setContent(content);
+                    infoWindow.open(map, marker);
+                });
+            });
+
+            if (markers.length === 1) {
+                map.setCenter({ lat: markers[0].lat, lng: markers[0].lng });
+                map.setZoom(17);
+            } else {
+                map.fitBounds(bounds);
+            }
+        }
+        </script>
+        <script
+            src="https://maps.googleapis.com/maps/api/js?key=AIzaSyC1rD0VqJ_0Nb8_lMeFV9aMEpWg-Jliq88&callback=initMapaAsistencia"
+            async defer>
+        </script>
+        @endpush
     @endif
 
     {{-- Estado vacío: sesión sin datos --}}

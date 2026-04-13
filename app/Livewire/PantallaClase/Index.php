@@ -4,6 +4,7 @@ namespace App\Livewire\PantallaClase;
 
 use App\Models\Asistencia;
 use App\Models\Clase;
+use App\Models\EstadisticaRuido;
 use App\Models\Estudiante;
 use App\Models\Grupo;
 use App\Models\Participacion;
@@ -25,6 +26,7 @@ class Index extends Component
 
     // Grupos
     public string $modo     = 'grupos';
+    public string $fuente   = 'presentes'; // 'presentes' | 'todos'
     public int    $cantidad = 4;
     public array  $preview  = [];
     public bool   $generado = false;
@@ -91,6 +93,7 @@ class Index extends Component
         $qrUrl            = null;
         $asistentes       = collect();
         $totalEstudiantes = 0;
+        $todosInscritos   = collect();
         $presentes        = collect();
         $historial        = collect();
         $grupos           = collect();
@@ -112,6 +115,19 @@ class Index extends Component
 
             $totalEstudiantes = $sesion->clase->estudiantes()->count();
 
+            // Todos los inscritos con flag de si ya asistieron
+            $presentesIds = $asistentes->pluck('estudiante_id')->toArray();
+            $todosInscritos = $sesion->clase->estudiantes()
+                ->orderBy('nombre')
+                ->get()
+                ->map(function ($est) use ($presentesIds, $asistentes) {
+                    $est->ya_asistio = in_array($est->id, $presentesIds);
+                    $est->hora_registro = $est->ya_asistio
+                        ? $asistentes->firstWhere('estudiante_id', $est->id)?->fecha_hora
+                        : null;
+                    return $est;
+                });
+
             $presentes = Estudiante::whereHas('asistencias', fn ($q) =>
                 $q->where('sesion_id', $this->sesionId)
             )->orderBy('nombre')->get();
@@ -130,7 +146,7 @@ class Index extends Component
         return view('livewire.pantalla-clase.index', compact(
             'clases', 'sesion',
             'qrSvg', 'qrUrl', 'asistentes', 'totalEstudiantes',
-            'presentes', 'historial', 'grupos',
+            'todosInscritos', 'presentes', 'historial', 'grupos',
             'esCatedratico', 'sinSesionActiva'
         ));
     }
@@ -152,6 +168,84 @@ class Index extends Component
         $this->tab      = 'qr';
         $this->reset(['ganadorId', 'ganadorNombre']);
         $this->resetGenerado();
+    }
+
+    /* ─── Sesión ────────────────────────────────────────────────────── */
+
+    public function finalizarSesion(): void
+    {
+        if (!$this->sesionId) return;
+
+        $sesion = Sesion::findOrFail($this->sesionId);
+        $sesion->update(['finalizada' => true, 'token' => null, 'expiracion' => null]);
+
+        $this->redirect(route('sesiones.index'), navigate: true);
+    }
+
+    /* ─── Medidor de ruido ───────────────────────────────────────────── */
+
+    public function guardarEstadisticasRuido(
+        float  $dbMinimo,
+        float  $dbMaximo,
+        float  $dbPromedio,
+        int    $totalAlertas,
+        int    $umbralDb,
+        int    $duracionSegundos,
+        string $nivelPredominante,
+        string $iniciadoEn,
+        string $finalizadoEn
+    ): void {
+        if (!$this->sesionId || $duracionSegundos < 5) return;
+
+        EstadisticaRuido::create([
+            'sesion_id'          => $this->sesionId,
+            'usuario_id'         => auth()->id(),
+            'db_minimo'          => $dbMinimo,
+            'db_maximo'          => $dbMaximo,
+            'db_promedio'        => $dbPromedio,
+            'total_alertas'      => $totalAlertas,
+            'umbral_db'          => $umbralDb,
+            'duracion_segundos'  => $duracionSegundos,
+            'nivel_predominante' => $nivelPredominante,
+            'iniciado_en'        => $iniciadoEn,
+            'finalizado_en'      => $finalizadoEn,
+        ]);
+    }
+
+    /* ─── Asistencia manual ──────────────────────────────────────────── */
+
+    public function registrarManual(int $estudianteId): void
+    {
+        if (!$this->sesionId) return;
+
+        $sesion = Sesion::findOrFail($this->sesionId);
+        if (!$sesion->esOperativa()) return;
+
+        $yaRegistrado = Asistencia::where('sesion_id', $this->sesionId)
+            ->where('estudiante_id', $estudianteId)
+            ->exists();
+
+        if ($yaRegistrado) return;
+
+        Asistencia::create([
+            'sesion_id'     => $this->sesionId,
+            'estudiante_id' => $estudianteId,
+            'selfie'        => null,
+            'latitud'       => null,
+            'longitud'      => null,
+        ]);
+    }
+
+    public function quitarAsistencia(int $estudianteId): void
+    {
+        if (!$this->sesionId) return;
+
+        $sesion = Sesion::findOrFail($this->sesionId);
+        if (!$sesion->esOperativa()) return;
+
+        Asistencia::where('sesion_id', $this->sesionId)
+            ->where('estudiante_id', $estudianteId)
+            ->delete();
     }
 
     /* ─── QR ─────────────────────────────────────────────────────────── */
@@ -243,13 +337,18 @@ class Index extends Component
 
         if (!$this->sesionId) return;
 
-        $presentes = Estudiante::whereHas('asistencias', fn ($q) =>
-            $q->where('sesion_id', $this->sesionId)
-        )->get();
+        if ($this->fuente === 'todos') {
+            $sesion    = Sesion::with('clase.estudiantes')->find($this->sesionId);
+            $candidatos = $sesion?->clase->estudiantes ?? collect();
+        } else {
+            $candidatos = Estudiante::whereHas('asistencias', fn ($q) =>
+                $q->where('sesion_id', $this->sesionId)
+            )->get();
+        }
 
-        if ($presentes->isEmpty()) return;
+        if ($candidatos->isEmpty()) return;
 
-        $total = $presentes->count();
+        $total = $candidatos->count();
 
         if ($this->modo === 'grupos') {
             $numGrupos = min($this->cantidad, $total);
@@ -258,7 +357,7 @@ class Index extends Component
         }
 
         $coOcurrencia = $this->buildCoOccurrenceMatrix();
-        $lista = $presentes->map(fn ($e) => ['id' => $e->id, 'nombre' => $e->nombre])->values()->toArray();
+        $lista = $candidatos->map(fn ($e) => ['id' => $e->id, 'nombre' => $e->nombre])->values()->toArray();
         $mejorGrupos = $this->optimizarGrupos($lista, $numGrupos, $coOcurrencia);
 
         $this->preview = [];
@@ -295,6 +394,11 @@ class Index extends Component
     {
         if (!$this->sesionId) return;
         Grupo::where('sesion_id', $this->sesionId)->delete();
+        $this->resetGenerado();
+    }
+
+    public function updatedFuente(): void
+    {
         $this->resetGenerado();
     }
 

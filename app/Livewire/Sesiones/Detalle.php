@@ -41,7 +41,7 @@ class Detalle extends Component
         $asistencias = DB::table('asistencia')
             ->join('estudiante', 'estudiante.id', '=', 'asistencia.estudiante_id')
             ->where('asistencia.sesion_id', $this->sesionId)
-            ->select('estudiante.id', 'estudiante.nombre', 'asistencia.fecha_hora', 'asistencia.selfie')
+            ->select('estudiante.id', 'estudiante.nombre', 'asistencia.fecha_hora', 'asistencia.selfie', 'asistencia.latitud', 'asistencia.longitud')
             ->orderBy('asistencia.fecha_hora')
             ->get();
 
@@ -103,11 +103,26 @@ class Detalle extends Component
             ];
         }
 
+        // ── Marcadores para el mapa (solo registros con GPS) ─────────────────
+        $marcadores = $asistencias
+            ->filter(fn($a) => $a->latitud && $a->longitud)
+            ->map(fn($a) => [
+                'lat'    => (float) $a->latitud,
+                'lng'    => (float) $a->longitud,
+                'nombre' => $a->nombre,
+                'hora'   => $a->fecha_hora
+                    ? \Carbon\Carbon::parse($a->fecha_hora)->format('H:i')
+                    : '',
+                'selfie' => $a->selfie ? asset('storage/' . $a->selfie) : null,
+            ])
+            ->values();
+
         return view('livewire.sesiones.detalle', compact(
             'sesion', 'totalInscritos', 'pctAsistencia',
             'asistencias', 'ausentes',
             'participaciones', 'promedioRuleta',
             'grupos', 'ruidoResumen', 'ruidoRegistros',
+            'marcadores',
         ));
     }
 }

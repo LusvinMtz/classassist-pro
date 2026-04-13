@@ -42,20 +42,6 @@
             Panel Admin
         </a>
 
-        <a href="{{ route('admin.usuarios') }}"
-           @click="sidebarOpen = false"
-           class="{{ request()->routeIs('admin.usuarios') ? $active : $inactive }}">
-            <span class="material-symbols-outlined">manage_accounts</span>
-            Usuarios
-        </a>
-
-        <a href="{{ route('admin.tipos-calificacion') }}"
-           @click="sidebarOpen = false"
-           class="{{ request()->routeIs('admin.tipos-calificacion') ? $active : $inactive }}">
-            <span class="material-symbols-outlined">grading</span>
-            Tipos Calificación
-        </a>
-
         <div class="mx-4 my-2 border-t border-[#000b60]/10 dark:border-[#bcc2ff]/10"></div>
         <div class="px-4 pb-1">
             <p class="text-[10px] font-black uppercase tracking-widest text-[#000b60]/40 dark:text-[#bcc2ff]/40">Académico</p>
@@ -70,14 +56,7 @@
             Dashboard
         </a>
 
-        <a href="{{ route('clases.index') }}"
-           @click="sidebarOpen = false"
-           class="{{ request()->routeIs('clases.*') ? $active : $inactive }}">
-            <span class="material-symbols-outlined">school</span>
-            Clases
-        </a>
-
-        <a href="{{ route('estudiantes.index') }}"
+<a href="{{ route('estudiantes.index') }}"
            @click="sidebarOpen = false"
            class="{{ request()->routeIs('estudiantes.*') ? $active : $inactive }}">
             <span class="material-symbols-outlined">groups</span>
@@ -89,34 +68,6 @@
            class="{{ request()->routeIs('sesiones.*') ? $active : $inactive }}">
             <span class="material-symbols-outlined">calendar_month</span>
             Sesiones
-        </a>
-
-        <a href="{{ route('asistencia.index') }}"
-           @click="sidebarOpen = false"
-           class="{{ request()->routeIs('asistencia.*') ? $active : $inactive }}">
-            <span class="material-symbols-outlined">how_to_reg</span>
-            Asistencia
-        </a>
-
-        <a href="{{ route('ruleta.index') }}"
-           @click="sidebarOpen = false"
-           class="{{ request()->routeIs('ruleta.*') ? $active : $inactive }}">
-            <span class="material-symbols-outlined">casino</span>
-            Ruleta
-        </a>
-
-        <a href="{{ route('grupos.index') }}"
-           @click="sidebarOpen = false"
-           class="{{ request()->routeIs('grupos.*') ? $active : $inactive }}">
-            <span class="material-symbols-outlined">hub</span>
-            Grupos
-        </a>
-
-        <a href="{{ route('temporizador.index') }}"
-           @click="sidebarOpen = false"
-           class="{{ request()->routeIs('temporizador.*') ? $active : $inactive }}">
-            <span class="material-symbols-outlined">timer</span>
-            Temporizador
         </a>
 
         <a href="{{ route('desempeno.index') }}"
@@ -133,13 +84,6 @@
             Historial Grupos
         </a>
 
-        <a href="{{ route('medidor.index') }}"
-           @click="sidebarOpen = false"
-           class="{{ request()->routeIs('medidor.*') ? $active : $inactive }}">
-            <span class="material-symbols-outlined">graphic_eq</span>
-            Medidor de Ruido
-        </a>
-
         <a href="{{ route('exportacion.index') }}"
            @click="sidebarOpen = false"
            class="{{ request()->routeIs('exportacion.*') ? $active : $inactive }}">
@@ -153,27 +97,6 @@
             <span class="material-symbols-outlined">grading</span>
             Calificaciones
         </a>
-
-        @if($user?->isAdmin())
-        <div class="mx-4 my-2 border-t border-[#000b60]/10 dark:border-[#bcc2ff]/10"></div>
-        <div class="px-4 pb-1">
-            <p class="text-[10px] font-black uppercase tracking-widest text-[#000b60]/40 dark:text-[#bcc2ff]/40">Universidad</p>
-        </div>
-
-        <a href="{{ route('sedes.index') }}"
-           @click="sidebarOpen = false"
-           class="{{ request()->routeIs('sedes.*') ? $active : $inactive }}">
-            <span class="material-symbols-outlined">location_city</span>
-            Sedes
-        </a>
-
-        <a href="{{ route('asignaciones.index') }}"
-           @click="sidebarOpen = false"
-           class="{{ request()->routeIs('asignaciones.*') ? $active : $inactive }}">
-            <span class="material-symbols-outlined">assignment_ind</span>
-            Asignaciones
-        </a>
-        @endif
 
     </nav>
 

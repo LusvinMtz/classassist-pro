@@ -219,28 +219,13 @@
                                             @endif
 
                                         @else
-                                            {{-- Sesión activa de hoy --}}
-                                            <button wire:click="finalizar({{ $sesion->id }})"
-                                                    wire:confirm="¿Finalizar esta sesión?"
-                                                    class="inline-flex items-center gap-1 bg-[#000b60] text-white text-xs font-semibold px-3 py-1.5 rounded-lg hover:opacity-80 transition">
-                                                <span class="material-symbols-outlined" style="font-size:14px">lock</span>
-                                                Finalizar
-                                            </button>
-
+                                            {{-- Sesión activa de hoy: solo ir a Pantalla Clase --}}
                                             <a href="{{ route('pantalla-clase.index', ['sesionId' => $sesion->id]) }}"
                                                title="Pantalla de Clase"
-                                               class="inline-flex items-center gap-1 border border-[#000b60]/30 dark:border-[#bcc2ff]/30 text-[#000b60] dark:text-[#bcc2ff] text-xs font-semibold px-3 py-1.5 rounded-lg hover:bg-[#e6f6ff] dark:hover:bg-[#0d2535] transition">
+                                               class="inline-flex items-center gap-1 bg-[#000b60] text-white text-xs font-semibold px-3 py-1.5 rounded-lg hover:opacity-80 transition">
                                                 <span class="material-symbols-outlined" style="font-size:14px">cast_for_education</span>
-                                                Pantalla
+                                                Pantalla de Clase
                                             </a>
-                                        @endif
-
-                                        @if($sesion->asistencias_count === 0 && ($esAdmin || !$sesion->finalizada))
-                                            <button wire:click="eliminar({{ $sesion->id }})"
-                                                    wire:confirm="¿Eliminar esta sesión? Esta acción no se puede deshacer."
-                                                    class="text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 p-1.5 rounded-lg transition">
-                                                <span class="material-symbols-outlined" style="font-size:16px">delete</span>
-                                            </button>
                                         @endif
 
                                     </div>

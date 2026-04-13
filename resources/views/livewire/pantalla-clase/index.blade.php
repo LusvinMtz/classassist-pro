@@ -12,8 +12,8 @@
                 <p class="text-sm text-gray-500 dark:text-gray-400">Vista centralizada para proyección</p>
             </div>
 
-            {{-- Selector de clase (solo admin) --}}
-            @if(!$esCatedratico)
+            {{-- Selector de clase (solo admin sin sesión activa) --}}
+            @if(!$esCatedratico && !$sesion)
             <select wire:model.live="claseId"
                     class="border border-gray-200 dark:border-[#2a3d4a] dark:bg-[#162a35] dark:text-[#dff4ff] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#000b60] min-w-[220px]">
                 <option value="">— Selecciona una clase —</option>
@@ -95,9 +95,19 @@
                 <span class="bg-green-100 text-green-700 text-xs font-bold px-2 py-0.5 rounded-full">Activa</span>
             @endif
         </div>
-        <div class="flex items-center gap-2 font-bold text-[#000b60] dark:text-[#bcc2ff]">
-            <span class="material-symbols-outlined text-green-600" style="font-size:17px">how_to_reg</span>
-            {{ $asistentes->count() }} / {{ $totalEstudiantes }} presentes
+        <div class="flex items-center gap-4">
+            <div class="flex items-center gap-2 font-bold text-[#000b60] dark:text-[#bcc2ff]">
+                <span class="material-symbols-outlined text-green-600" style="font-size:17px">how_to_reg</span>
+                {{ $asistentes->count() }} / {{ $totalEstudiantes }} presentes
+            </div>
+            @if(!$sesion->finalizada)
+            <button wire:click="finalizarSesion"
+                    wire:confirm="¿Finalizar esta sesión? Ya no se podrá registrar asistencia ni participación."
+                    class="inline-flex items-center gap-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition">
+                <span class="material-symbols-outlined" style="font-size:15px">lock</span>
+                Finalizar sesión
+            </button>
+            @endif
         </div>
     </div>
 
@@ -171,43 +181,80 @@
 
         </div>
 
-        {{-- Panel asistentes --}}
+        {{-- Panel: lista de todos los inscritos --}}
         <div class="bg-white dark:bg-[#1e333c] rounded-2xl shadow-lg overflow-hidden flex flex-col">
 
-            <div class="bg-[#000b60] px-6 py-4 flex items-center justify-between">
-                <span class="font-black text-white text-lg flex items-center gap-2">
-                    <span class="material-symbols-outlined">how_to_reg</span>
-                    Presentes
+            <div class="bg-[#000b60] px-5 py-4 flex items-center justify-between">
+                <span class="font-black text-white text-base flex items-center gap-2">
+                    <span class="material-symbols-outlined">format_list_bulleted</span>
+                    Lista de asistencia
                 </span>
-                <div class="flex items-center gap-3">
-                    <span class="text-4xl font-black text-yellow-300">{{ $asistentes->count() }}</span>
-                    <span class="text-white/50 text-lg">/ {{ $totalEstudiantes }}</span>
-                    @if($totalEstudiantes > 0)
-                        <span class="bg-white/20 text-white text-sm font-bold px-3 py-1 rounded-full">
-                            {{ round(($asistentes->count() / $totalEstudiantes) * 100) }}%
-                        </span>
-                    @endif
+                <div class="flex items-center gap-2">
+                    <span class="bg-green-400 text-[#000b60] text-xs font-black px-2.5 py-1 rounded-full">
+                        {{ $asistentes->count() }} presentes
+                    </span>
+                    <span class="bg-white/20 text-white text-xs font-bold px-2.5 py-1 rounded-full">
+                        {{ $totalEstudiantes - $asistentes->count() }} ausentes
+                    </span>
                 </div>
             </div>
 
-            <div class="flex-1 overflow-y-auto">
-                @if($asistentes->isEmpty())
+            <div class="flex-1 overflow-y-auto" style="max-height: 480px;">
+                @if($todosInscritos->isEmpty())
                     <div class="flex flex-col items-center justify-center py-16 text-gray-300">
-                        <span class="material-symbols-outlined" style="font-size:48px">person_add</span>
-                        <p class="mt-3 font-semibold text-gray-400">Esperando registros...</p>
+                        <span class="material-symbols-outlined" style="font-size:48px">group</span>
+                        <p class="mt-3 font-semibold text-gray-400">Sin estudiantes inscritos</p>
                     </div>
                 @else
-                    <div class="grid grid-cols-2 gap-2 p-4">
-                        @foreach($asistentes as $a)
-                            <div class="bg-green-50 dark:bg-green-900/20 border border-green-100 dark:border-green-800/30 rounded-xl px-3 py-2 flex items-center gap-2">
-                                <span class="material-symbols-outlined text-green-500" style="font-size:16px">check_circle</span>
-                                <div>
-                                    <p class="font-bold text-sm text-gray-800 dark:text-gray-200 leading-tight">{{ $a->estudiante->nombre }}</p>
-                                    <p class="text-xs text-gray-400 font-mono">{{ \Carbon\Carbon::parse($a->fecha_hora)->format('H:i') }}</p>
-                                </div>
+                    <ul class="divide-y divide-gray-50 dark:divide-[#1a2f3c]">
+                        @foreach($todosInscritos as $est)
+                        <li class="flex items-center gap-3 px-4 py-2.5
+                                   {{ $est->ya_asistio
+                                       ? 'bg-green-50/60 dark:bg-green-900/10'
+                                       : 'hover:bg-gray-50 dark:hover:bg-[#1a2f3c]' }}">
+
+                            {{-- Ícono estado --}}
+                            @if($est->ya_asistio)
+                                <span class="material-symbols-outlined text-green-500 shrink-0" style="font-size:20px">check_circle</span>
+                            @else
+                                <span class="material-symbols-outlined text-gray-300 dark:text-gray-600 shrink-0" style="font-size:20px">radio_button_unchecked</span>
+                            @endif
+
+                            {{-- Nombre --}}
+                            <div class="flex-1 min-w-0">
+                                <p class="font-semibold text-sm truncate
+                                          {{ $est->ya_asistio ? 'text-gray-800 dark:text-gray-200' : 'text-gray-500 dark:text-gray-400' }}">
+                                    {{ $est->nombre }}
+                                </p>
+                                @if($est->ya_asistio && $est->hora_registro)
+                                    <p class="text-xs text-green-600 font-mono">
+                                        {{ \Carbon\Carbon::parse($est->hora_registro)->format('H:i') }}
+                                    </p>
+                                @else
+                                    <p class="text-xs text-gray-300 dark:text-gray-600 font-mono">{{ $est->carne }}</p>
+                                @endif
                             </div>
+
+                            {{-- Botón acción --}}
+                            @if(!$sesion->finalizada)
+                                @if($est->ya_asistio)
+                                    <button wire:click="quitarAsistencia({{ $est->id }})"
+                                            title="Quitar asistencia"
+                                            class="text-red-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 p-1 rounded-lg transition shrink-0">
+                                        <span class="material-symbols-outlined" style="font-size:16px">remove_circle</span>
+                                    </button>
+                                @else
+                                    <button wire:click="registrarManual({{ $est->id }})"
+                                            title="Registrar asistencia manual"
+                                            class="text-[#000b60] dark:text-[#bcc2ff] hover:bg-[#e6f6ff] dark:hover:bg-[#0d2535] p-1 rounded-lg transition shrink-0">
+                                        <span class="material-symbols-outlined" style="font-size:16px">person_add</span>
+                                    </button>
+                                @endif
+                            @endif
+
+                        </li>
                         @endforeach
-                    </div>
+                    </ul>
                 @endif
             </div>
 
@@ -339,11 +386,18 @@
     {{-- TAB: GRUPOS                                                     --}}
     {{-- ═══════════════════════════════════════════════════════════════ --}}
     @elseif($tab === 'grupos')
-    @if($presentes->isEmpty())
+    @php
+        $candidatosGrupo = $fuente === 'todos' ? $todosInscritos : $presentes;
+    @endphp
+    @if($candidatosGrupo->isEmpty())
         <div class="bg-white dark:bg-[#1e333c] rounded-2xl shadow flex flex-col items-center justify-center py-24 text-gray-400 dark:text-gray-500">
             <span class="material-symbols-outlined" style="font-size:72px">person_off</span>
-            <p class="mt-4 font-semibold text-gray-500 dark:text-gray-400 text-xl">No hay estudiantes con asistencia registrada</p>
-            <p class="text-sm mt-1">Los estudiantes deben registrar asistencia para participar en grupos</p>
+            @if($fuente === 'presentes')
+                <p class="mt-4 font-semibold text-gray-500 dark:text-gray-400 text-xl">No hay estudiantes con asistencia registrada</p>
+                <p class="text-sm mt-1">Los estudiantes deben registrar asistencia para participar en grupos</p>
+            @else
+                <p class="mt-4 font-semibold text-gray-500 dark:text-gray-400 text-xl">No hay estudiantes inscritos en esta clase</p>
+            @endif
         </div>
     @else
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -355,14 +409,40 @@
             <div class="bg-[#e6f6ff] dark:bg-[#0d2535] rounded-xl px-5 py-4">
                 <p class="text-xs font-bold text-[#000b60] dark:text-[#bcc2ff] uppercase tracking-wide mb-1">Sesión activa</p>
                 <p class="font-bold text-[#000b60] dark:text-[#bcc2ff]">{{ $sesion->fecha->translatedFormat('d/m/Y') }}</p>
-                <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                    <span class="font-semibold text-green-600">{{ $presentes->count() }}</span> estudiantes presentes
-                </p>
+                <div class="flex gap-3 mt-1 text-sm text-gray-500 dark:text-gray-400">
+                    <span><span class="font-semibold text-green-600">{{ $presentes->count() }}</span> presentes</span>
+                    <span><span class="font-semibold text-[#000b60] dark:text-[#bcc2ff]">{{ $todosInscritos->count() }}</span> inscritos</span>
+                </div>
             </div>
 
             {{-- Configuración --}}
             <div class="bg-white dark:bg-[#1e333c] rounded-xl shadow p-5 flex flex-col gap-4">
                 <p class="font-bold text-[#000b60] dark:text-[#bcc2ff] text-sm uppercase tracking-wide">Configuración</p>
+
+                {{-- Fuente --}}
+                <div>
+                    <label class="block text-sm font-semibold mb-2">Incluir estudiantes</label>
+                    <div class="flex rounded-lg overflow-hidden border border-gray-200 dark:border-[#2a3d4a]">
+                        <button wire:click="$set('fuente', 'presentes')"
+                                class="flex-1 py-2 text-sm font-semibold transition flex items-center justify-center gap-1
+                                       {{ $fuente === 'presentes' ? 'bg-[#000b60] text-white' : 'bg-white dark:bg-[#162a35] text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-[#1a2f3c]' }}">
+                            <span class="material-symbols-outlined" style="font-size:15px">how_to_reg</span>
+                            Solo presentes
+                        </button>
+                        <button wire:click="$set('fuente', 'todos')"
+                                class="flex-1 py-2 text-sm font-semibold transition border-l border-gray-200 dark:border-[#2a3d4a] flex items-center justify-center gap-1
+                                       {{ $fuente === 'todos' ? 'bg-[#000b60] text-white' : 'bg-white dark:bg-[#162a35] text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-[#1a2f3c]' }}">
+                            <span class="material-symbols-outlined" style="font-size:15px">group</span>
+                            Todos los inscritos
+                        </button>
+                    </div>
+                    <p class="text-xs text-gray-400 mt-1.5 flex items-center gap-1">
+                        <span class="material-symbols-outlined" style="font-size:13px">info</span>
+                        {{ $fuente === 'presentes'
+                            ? $presentes->count() . ' estudiante(s) en la sesión de hoy'
+                            : $todosInscritos->count() . ' estudiante(s) inscritos en la clase' }}
+                    </p>
+                </div>
 
                 {{-- Modo --}}
                 <div>
@@ -393,7 +473,7 @@
                         <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
                     @enderror
                     @php
-                        $total = $presentes->count();
+                        $total = $candidatosGrupo->count();
                         if ($modo === 'grupos') {
                             $numG = min(max((int)$cantidad, 1), $total);
                             $est  = $numG > 0 ? ceil($total / $numG) : 0;
@@ -420,22 +500,27 @@
                 </p>
             </div>
 
-            {{-- Lista de presentes --}}
+            {{-- Lista de candidatos --}}
             <div class="bg-white dark:bg-[#1e333c] rounded-xl shadow overflow-hidden">
                 <div class="bg-[#e6f6ff] dark:bg-[#0d2535] px-5 py-3 flex items-center justify-between">
                     <span class="font-bold text-[#000b60] dark:text-[#bcc2ff] text-sm flex items-center gap-2">
-                        <span class="material-symbols-outlined" style="font-size:18px">how_to_reg</span>
-                        Presentes hoy
+                        <span class="material-symbols-outlined" style="font-size:18px">{{ $fuente === 'presentes' ? 'how_to_reg' : 'group' }}</span>
+                        {{ $fuente === 'presentes' ? 'Presentes hoy' : 'Inscritos en clase' }}
                     </span>
-                    <span class="bg-green-500 text-white text-xs font-bold px-2.5 py-0.5 rounded-full">
-                        {{ $presentes->count() }}
+                    <span class="bg-[#000b60] text-white text-xs font-bold px-2.5 py-0.5 rounded-full">
+                        {{ $candidatosGrupo->count() }}
                     </span>
                 </div>
                 <ul class="divide-y divide-gray-50 dark:divide-[#1a2f3c] max-h-56 overflow-y-auto">
-                    @foreach($presentes as $i => $e)
+                    @foreach($candidatosGrupo as $i => $e)
                         <li class="px-4 py-2 flex items-center gap-3 text-sm">
                             <span class="text-gray-300 text-xs w-5 text-right">{{ $i + 1 }}</span>
-                            <span>{{ $e->nombre }}</span>
+                            <span class="{{ $fuente === 'todos' && !($e->ya_asistio ?? false) ? 'text-gray-400 dark:text-gray-500' : '' }}">
+                                {{ $e->nombre }}
+                            </span>
+                            @if($fuente === 'todos' && ($e->ya_asistio ?? false))
+                                <span class="ml-auto text-green-500 material-symbols-outlined" style="font-size:14px">check_circle</span>
+                            @endif
                         </li>
                     @endforeach
                 </ul>
@@ -1117,6 +1202,8 @@ function medidorPantalla() {
         mMin:          0,
         mMax:          0,
         mAvg:          0,
+        _mIniciadoEn:  null,
+        _mNiveles:     {},   // contador por nivel para calcular predominante
 
         initMedidor() {},
 
@@ -1140,7 +1227,8 @@ function medidorPantalla() {
                 source.connect(analyser);
                 const data = new Uint8Array(analyser.frequencyBinCount);
 
-                this.mActivo = true;
+                this.mActivo     = true;
+                this._mIniciadoEn = new Date().toISOString();
                 this.mResetStats();
 
                 const loop = () => {
@@ -1168,10 +1256,13 @@ function medidorPantalla() {
 
                     // Stats
                     this._mSamples.push(this.mDb);
-                    if (this._mSamples.length > 600) this._mSamples.shift();
+                    if (this._mSamples.length > 3000) this._mSamples.shift();
                     this.mMax = Math.max(...this._mSamples);
                     this.mMin = Math.min(...this._mSamples);
                     this.mAvg = Math.round(this._mSamples.reduce((a, b) => a + b, 0) / this._mSamples.length);
+
+                    // Nivel predominante
+                    this._mNiveles[this.mNivel] = (this._mNiveles[this.mNivel] ?? 0) + 1;
 
                     this.mAnimId = requestAnimationFrame(loop);
                 };
@@ -1183,9 +1274,34 @@ function medidorPantalla() {
         },
 
         mDetener() {
+            if (!this.mActivo) return;
+
             if (this.mAnimId) cancelAnimationFrame(this.mAnimId);
             if (this.mStream) this.mStream.getTracks().forEach(t => t.stop());
             if (this.mContext) this.mContext.close();
+
+            // Guardar estadísticas si hubo medición significativa
+            const finalizadoEn = new Date().toISOString();
+            const durSeg = this._mIniciadoEn
+                ? Math.round((new Date(finalizadoEn) - new Date(this._mIniciadoEn)) / 1000)
+                : 0;
+            const nivelPred = Object.entries(this._mNiveles)
+                .sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'silencio';
+
+            if (durSeg >= 5 && this._mSamples.length > 0) {
+                this.$wire.guardarEstadisticasRuido(
+                    this.mMin,
+                    this.mMax,
+                    this.mAvg,
+                    this.mAlertas,
+                    this.mUmbral,
+                    durSeg,
+                    nivelPred,
+                    this._mIniciadoEn,
+                    finalizadoEn
+                );
+            }
+
             this.mActivo       = false;
             this.mDb           = 0;
             this.mNivel        = 'silencio';
@@ -1194,11 +1310,13 @@ function medidorPantalla() {
         },
 
         mResetStats() {
-            this._mSamples = [];
-            this.mMax      = 0;
-            this.mMin      = 0;
-            this.mAvg      = 0;
-            this.mAlertas  = 0;
+            this._mSamples  = [];
+            this._mNiveles  = {};
+            this._mIniciadoEn = new Date().toISOString();
+            this.mMax       = 0;
+            this.mMin       = 0;
+            this.mAvg       = 0;
+            this.mAlertas   = 0;
         },
     };
 }

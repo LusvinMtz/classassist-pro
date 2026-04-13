@@ -14,11 +14,13 @@ class Index extends Component
 {
     use WithFileUploads;
 
-    public ?int $claseId = null;
+    // ── Filtros ──────────────────────────────────────────────────────────────
+    public ?int  $claseId = null;   // catedrático: selector de clase
+    public string $search = '';     // admin: búsqueda global
 
-    // --- Modal individual ---
-    public bool  $showModal  = false;
-    public ?int  $editingId  = null;
+    // ── Modal individual ─────────────────────────────────────────────────────
+    public bool  $showModal = false;
+    public ?int  $editingId = null;
 
     #[Validate('required|string|max:50')]
     public string $carnet = '';
@@ -29,15 +31,40 @@ class Index extends Component
     #[Validate('nullable|email|max:100')]
     public string $correo = '';
 
-    // --- Modal importar ---
+    // ── Modal importar ───────────────────────────────────────────────────────
     public bool  $showImportModal = false;
     public       $archivo         = null;
     public array $erroresImport   = [];
     public int   $importados      = 0;
 
+    // ─────────────────────────────────────────────────────────────────────────
+
     public function render()
     {
-        $clases = $this->queryClases()->orderBy('nombre')->get();
+        $user = auth()->user();
+
+        if ($user->isAdmin()) {
+            // Admin: todos los estudiantes con sus clases
+            $estudiantes = Estudiante::with('clases')
+                ->when($this->search, function ($q) {
+                    $q->where(function ($q2) {
+                        $q2->where('nombre', 'like', '%' . $this->search . '%')
+                           ->orWhere('carnet', 'like', '%' . $this->search . '%')
+                           ->orWhere('correo', 'like', '%' . $this->search . '%');
+                    });
+                })
+                ->orderBy('nombre')
+                ->get();
+
+            return view('livewire.estudiantes.index', [
+                'esAdmin'     => true,
+                'clases'      => collect(),
+                'estudiantes' => $estudiantes,
+            ]);
+        }
+
+        // Catedrático: selector de clase
+        $clases      = $this->queryClases()->orderBy('nombre')->get();
         $estudiantes = collect();
 
         if ($this->claseId) {
@@ -47,21 +74,24 @@ class Index extends Component
             }
         }
 
-        return view('livewire.estudiantes.index', compact('clases', 'estudiantes'));
+        return view('livewire.estudiantes.index', [
+            'esAdmin'     => false,
+            'clases'      => $clases,
+            'estudiantes' => $estudiantes,
+        ]);
     }
 
     private function queryClases(): \Illuminate\Database\Eloquent\Builder
     {
         $user = auth()->user();
+        $porUsuarioId = Clase::where('usuario_id', $user->id)->pluck('id');
+        $porPivot     = $user->clasesImpartidas()->pluck('clase.id');
+        $ids          = $porUsuarioId->merge($porPivot)->unique();
 
-        if ($user->isAdmin()) {
-            return Clase::where('usuario_id', $user->id);
-        }
-
-        return Clase::whereHas('catedraticos', fn ($q) => $q->where('users.id', $user->id));
+        return Clase::whereIn('id', $ids);
     }
 
-    // ---- Individual ----
+    // ── CRUD individual ──────────────────────────────────────────────────────
 
     public function openCreate(): void
     {
@@ -85,45 +115,57 @@ class Index extends Component
     {
         $this->validate();
 
-        if (!$this->claseId) return;
+        $user = auth()->user();
 
-        $clase = $this->queryClases()->findOrFail($this->claseId);
+        if ($user->isAdmin()) {
+            // Admin: edición global (solo editar, no crear sin clase)
+            if (!$this->editingId) return;
 
-        // Carnet único por clase
-        $carnetDuplicado = $clase->estudiantes()
-            ->where('carnet', $this->carnet)
-            ->when($this->editingId, fn ($q) => $q->where('estudiante.id', '!=', $this->editingId))
-            ->exists();
+            Estudiante::findOrFail($this->editingId)->update([
+                'carnet'  => $this->carnet,
+                'nombre'  => $this->nombre,
+                'correo'  => $this->correo ?: null,
+            ]);
+        } else {
+            // Catedrático: requiere clase seleccionada
+            if (!$this->claseId) return;
 
-        if ($carnetDuplicado) {
-            $this->addError('carnet', 'Ya existe un estudiante con este carné en la clase.');
-            return;
-        }
+            $clase = $this->queryClases()->findOrFail($this->claseId);
 
-        // Correo único por clase (solo si se proporcionó)
-        if ($this->correo) {
-            $correoDuplicado = $clase->estudiantes()
-                ->where('correo', $this->correo)
+            $carnetDuplicado = $clase->estudiantes()
+                ->where('carnet', $this->carnet)
                 ->when($this->editingId, fn ($q) => $q->where('estudiante.id', '!=', $this->editingId))
                 ->exists();
 
-            if ($correoDuplicado) {
-                $this->addError('correo', 'Ya existe un estudiante con este correo en la clase.');
+            if ($carnetDuplicado) {
+                $this->addError('carnet', 'Ya existe un estudiante con este carné en la clase.');
                 return;
             }
-        }
 
-        $data = [
-            'carnet' => $this->carnet,
-            'nombre' => $this->nombre,
-            'correo' => $this->correo ?: null,
-        ];
+            if ($this->correo) {
+                $correoDuplicado = $clase->estudiantes()
+                    ->where('correo', $this->correo)
+                    ->when($this->editingId, fn ($q) => $q->where('estudiante.id', '!=', $this->editingId))
+                    ->exists();
 
-        if ($this->editingId) {
-            Estudiante::findOrFail($this->editingId)->update($data);
-        } else {
-            $estudiante = Estudiante::create($data);
-            $clase->estudiantes()->attach($estudiante->id);
+                if ($correoDuplicado) {
+                    $this->addError('correo', 'Ya existe un estudiante con este correo en la clase.');
+                    return;
+                }
+            }
+
+            $data = [
+                'carnet' => $this->carnet,
+                'nombre' => $this->nombre,
+                'correo' => $this->correo ?: null,
+            ];
+
+            if ($this->editingId) {
+                Estudiante::findOrFail($this->editingId)->update($data);
+            } else {
+                $estudiante = Estudiante::create($data);
+                $clase->estudiantes()->attach($estudiante->id);
+            }
         }
 
         $this->closeModal();
@@ -131,12 +173,17 @@ class Index extends Component
 
     public function delete(int $id): void
     {
-        if (!$this->claseId) return;
+        $user = auth()->user();
 
-        $this->queryClases()
-            ->findOrFail($this->claseId)
-            ->estudiantes()
-            ->detach($id);
+        if ($user->isAdmin()) {
+            Estudiante::findOrFail($id)->delete();
+        } else {
+            if (!$this->claseId) return;
+            $this->queryClases()
+                ->findOrFail($this->claseId)
+                ->estudiantes()
+                ->detach($id);
+        }
     }
 
     public function closeModal(): void
@@ -146,7 +193,7 @@ class Index extends Component
         $this->resetValidation();
     }
 
-    // ---- Importar ----
+    // ── Importar ─────────────────────────────────────────────────────────────
 
     public function openImport(): void
     {
