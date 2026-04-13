@@ -10,6 +10,8 @@
     <!-- Vite Assets -->
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 
+    <script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
+
     <!-- Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 
@@ -20,13 +22,47 @@
         body { font-family: 'Inter', sans-serif; }
         h1, h2, h3 { font-family: 'Manrope', sans-serif; }
     </style>
+    @livewireStyles
 </head>
 
-<body class="bg-[#f3faff] text-[#071e27] dark:bg-[#071e27] dark:text-[#dff4ff]">
+<body
+    x-data="{ sidebarOpen: false }"
+    class="bg-[#f3faff] text-[#071e27] dark:bg-[#071e27] dark:text-[#dff4ff]"
+>
+
+    {{-- Overlay oscuro (solo móvil) --}}
+    <div
+        x-show="sidebarOpen"
+        x-transition:enter="transition-opacity ease-linear duration-200"
+        x-transition:enter-start="opacity-0"
+        x-transition:enter-end="opacity-100"
+        x-transition:leave="transition-opacity ease-linear duration-200"
+        x-transition:leave-start="opacity-100"
+        x-transition:leave-end="opacity-0"
+        @click="sidebarOpen = false"
+        class="fixed inset-0 bg-black/40 z-20 md:hidden"
+        style="display:none"
+    ></div>
 
     @include('layouts.sidebar')
 
-    <main class="md:ml-64 min-h-screen p-8">
+    {{-- Botón flotante hamburger (solo móvil) --}}
+    <button
+        @click="sidebarOpen = !sidebarOpen"
+        class="fixed bottom-6 right-6 z-40 md:hidden
+               w-14 h-14 rounded-full shadow-2xl
+               flex items-center justify-center
+               transition-all duration-200 active:scale-95
+               bg-[#000b60] text-white
+               dark:bg-white dark:text-[#000b60]
+               hover:scale-110"
+        aria-label="Abrir menú"
+    >
+        <span class="material-symbols-outlined text-[26px]"
+              x-text="sidebarOpen ? 'close' : 'menu'">menu</span>
+    </button>
+
+    <main class="md:ml-64 min-h-screen p-4 md:p-8">
         {{ $slot }}
     </main>
 

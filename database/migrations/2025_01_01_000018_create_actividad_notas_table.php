@@ -12,6 +12,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('actividad_id')->constrained('actividad')->cascadeOnDelete();
             $table->foreignId('estudiante_id')->constrained('estudiante')->cascadeOnDelete();
+            $table->foreignId('grupo_id')->nullable()->constrained('grupo')->nullOnDelete();
             $table->decimal('nota', 5, 2)->nullable();
             $table->unique(['actividad_id', 'estudiante_id']);
         });

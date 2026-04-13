@@ -230,10 +230,18 @@
                                 <span class="material-symbols-outlined" style="font-size:18px">groups</span>
                                 Grupos guardados — sesión {{ $sesion->fecha->translatedFormat('d/m/Y') }}
                             </span>
-                            <div class="flex items-center gap-3">
+                            <div class="flex items-center gap-2 flex-wrap">
                                 <span class="bg-[#000b60] text-white text-xs font-bold px-2.5 py-0.5 rounded-full">
                                     {{ $guardados->count() }} grupos
                                 </span>
+                                <a href="{{ route('calificaciones.index') }}"
+                                   @click="
+                                       sessionStorage.setItem('cal_sesion_grupal', '{{ $sesionId }}');
+                                   "
+                                   class="text-purple-600 dark:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-900/20 text-xs font-semibold flex items-center gap-1 transition px-2 py-1 rounded-lg border border-purple-200 dark:border-purple-700">
+                                    <span class="material-symbols-outlined" style="font-size:14px">grading</span>
+                                    Calificar grupos
+                                </a>
                                 <button wire:click="eliminarGrupos"
                                         wire:confirm="¿Eliminar todos los grupos de esta sesión?"
                                         class="text-red-400 hover:text-red-600 text-xs font-semibold flex items-center gap-1 transition">

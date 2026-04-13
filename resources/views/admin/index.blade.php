@@ -108,6 +108,18 @@
             <span class="material-symbols-outlined text-gray-300 dark:text-gray-600 ml-auto" style="font-size:24px">chevron_right</span>
         </a>
 
+        <a href="{{ route('admin.bitacora') }}"
+           class="bg-white dark:bg-[#1e333c] rounded-xl shadow p-6 flex items-center gap-5 hover:shadow-md transition group md:col-span-2">
+            <div class="bg-[#000b60] rounded-xl p-4">
+                <span class="material-symbols-outlined text-white" style="font-size:32px">policy</span>
+            </div>
+            <div>
+                <h3 class="text-lg font-black text-[#000b60] dark:text-[#bcc2ff] group-hover:underline">Bitácora del sistema</h3>
+                <p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Auditoría completa de acciones: logins, creaciones, ediciones, eliminaciones y errores</p>
+            </div>
+            <span class="material-symbols-outlined text-gray-300 dark:text-gray-600 ml-auto" style="font-size:24px">chevron_right</span>
+        </a>
+
     </div>
 
 </x-app-layout>

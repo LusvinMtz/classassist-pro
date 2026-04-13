@@ -11,6 +11,8 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->trustProxies(at: '*');
+
         $middleware->alias([
             'role.admin'       => \App\Http\Middleware\EnsureAdmin::class,
             'role.catedratico' => \App\Http\Middleware\EnsureCatedratico::class,

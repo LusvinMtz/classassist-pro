@@ -15,6 +15,7 @@ return new class extends Migration
             $table->string('correo', 100)->nullable();
             $table->foreignId('usuario_id')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();
+            $table->softDeletes();
         });
     }
 

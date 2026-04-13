@@ -26,7 +26,7 @@
                     {{-- Track --}}
                     <circle cx="140" cy="140" r="120"
                             fill="none"
-                            stroke="#e6f0ff"
+                            :stroke="dark ? '#1e3d58' : '#e6f0ff'"
                             stroke-width="14"/>
                     {{-- Progreso --}}
                     <circle cx="140" cy="140" r="120"
@@ -44,14 +44,15 @@
                      :class="finished ? 'animate-pulse' : ''">
                     <span class="font-black tabular-nums leading-none"
                           :class="{
-                              'text-7xl text-[#000b60]': !finished && progress > 0.25,
-                              'text-7xl text-orange-500': !finished && progress <= 0.25 && progress > 0.1,
-                              'text-7xl text-red-500':   !finished && progress <= 0.1,
-                              'text-5xl text-red-500':   finished
+                              'text-7xl': !finished,
+                              'text-5xl text-red-500': finished,
+                              'text-orange-500': !finished && progress <= 0.25 && progress > 0.1,
+                              'text-red-500':    !finished && progress <= 0.1
                           }"
+                          :style="(!finished && progress > 0.25) ? { color: dark ? '#bcc2ff' : '#000b60' } : {}"
                           x-text="finished ? '¡Tiempo!' : display">
                     </span>
-                    <span class="text-xs text-gray-400 mt-2 font-semibold uppercase tracking-widest"
+                    <span class="text-xs text-gray-400 dark:text-gray-500 mt-2 font-semibold uppercase tracking-widest"
                           x-show="!finished"
                           x-text="running ? 'en curso' : 'listo'">
                     </span>
@@ -223,6 +224,7 @@ function temporizador() {
         customSec:    0,
         soundOn:      true,
         isFullscreen: false,
+        dark:         window.matchMedia('(prefers-color-scheme: dark)').matches,
 
         circumference: 2 * Math.PI * 120,
 

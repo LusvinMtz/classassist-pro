@@ -72,15 +72,13 @@ class Usuarios extends Component
         $this->clasesSeleccionadas = array_values(array_intersect($this->clasesSeleccionadas, $clasesValidas));
     }
 
-    // Carreras disponibles según sedes seleccionadas
+    // Todas las carreras disponibles (el filtro de sede no restringe carreras)
     private function carrerasDisponibles(): \Illuminate\Support\Collection
     {
         if (empty($this->sedesSeleccionadas)) {
             return collect();
         }
-        return Carrera::whereHas('sedes', fn($q) => $q->whereIn('sede.id', $this->sedesSeleccionadas))
-            ->orderBy('nombre')
-            ->get();
+        return Carrera::orderBy('nombre')->get();
     }
 
     // Clases disponibles según carreras seleccionadas + búsqueda

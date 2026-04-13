@@ -106,7 +106,7 @@ class Index extends Component
         if (!$this->sesionId) return;
 
         $sesion = Sesion::findOrFail($this->sesionId);
-        if ($sesion->finalizada) return;
+        if (!$sesion->esOperativa()) return;
 
         $presentes = Estudiante::whereHas('asistencias', fn ($q) =>
             $q->where('sesion_id', $this->sesionId)

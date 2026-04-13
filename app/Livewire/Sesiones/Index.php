@@ -2,141 +2,263 @@
 
 namespace App\Livewire\Sesiones;
 
+use App\Models\Carrera;
 use App\Models\Clase;
+use App\Models\Sede;
 use App\Models\Sesion;
+use Illuminate\Support\Facades\DB;
 use Livewire\Component;
 
 class Index extends Component
 {
-    public ?int $claseId = null;
+    // ── Modal: nueva sesión ───────────────────────────────────────────────────
+    public bool $showModal      = false;
+    public ?int $modalSedeId    = null;
+    public ?int $modalCarreraId = null;
+    public ?int $modalClaseId   = null;
 
-    public function mount(): void
+    // ── Filtros tabla (admin) ─────────────────────────────────────────────────
+    public ?int   $filterSedeId    = null;
+    public ?int   $filterCarreraId = null;
+    public ?int   $filterClaseId   = null;
+    public string $filterCatedratico = '';
+
+    // ─── Helpers ─────────────────────────────────────────────────────────────
+
+    private function esAdmin(): bool
     {
-        // Pre-seleccionar la primera clase disponible
-        $primera = $this->queryClases()->orderBy('nombre')->first();
-        if ($primera) {
-            $this->claseId = $primera->id;
-        }
+        return auth()->user()->isAdmin();
     }
 
-    /** Retorna un query builder limitado a las clases que el usuario puede gestionar. */
-    private function queryClases(): \Illuminate\Database\Eloquent\Builder
+    /** IDs de todas las clases del catedrático (owner + pivot). */
+    private function todasClasesIdsCatedratico(): \Illuminate\Support\Collection
     {
-        $user = auth()->user();
-        if ($user->isAdmin()) {
-            return Clase::query();
-        }
-        $ids = $user->clasesImpartidas()->pluck('clase.id');
-        return Clase::whereIn('id', $ids);
+        $user         = auth()->user();
+        $porPivot     = $user->clasesImpartidas()->pluck('clase.id');
+        $porUsuarioId = Clase::where('usuario_id', $user->id)->pluck('id');
+        return $porPivot->merge($porUsuarioId)->unique();
     }
 
-    /** Verifica que el claseId pertenezca al usuario; lanza 404 si no. */
-    private function autorizarClase(int $claseId): Clase
-    {
-        return $this->queryClases()->findOrFail($claseId);
-    }
-
-    /** Para catedráticos: sesión activa (no finalizada) en cualquiera de sus clases. */
+    /**
+     * Sesión abierta de HOY del catedrático.
+     * Las sesiones de días pasados se auto-finalizan por el scheduler.
+     */
     private function sesionActivaCatedratico(): ?Sesion
     {
-        $user = auth()->user();
-        if ($user->isAdmin()) return null;
+        if ($this->esAdmin()) return null;
 
-        $ids = $user->clasesImpartidas()->pluck('clase.id');
-        return Sesion::whereIn('clase_id', $ids)
+        return Sesion::whereIn('clase_id', $this->todasClasesIdsCatedratico())
             ->where('finalizada', false)
+            ->whereDate('fecha', today())
+            ->with('clase')
             ->latest()
             ->first();
     }
 
-    public function render()
+    /** Clases disponibles para seleccionar en el modal (respeta filtros del modal). */
+    private function queryClasesModal(): \Illuminate\Database\Eloquent\Builder
     {
-        $clases   = $this->queryClases()->orderBy('nombre')->get();
-        $sesiones = collect();
-        $hoyTiene = false;
-
-        if ($this->claseId) {
-            $sesiones = Sesion::where('clase_id', $this->claseId)
-                ->withCount(['asistencias', 'participaciones'])
-                ->orderByDesc('fecha')
-                ->orderByDesc('id')
-                ->get();
-
-            $hoyTiene = $sesiones->where('fecha', today())->isNotEmpty();
+        if ($this->esAdmin()) {
+            $q = Clase::query();
+            if ($this->modalCarreraId) {
+                $q->where('carrera_id', $this->modalCarreraId);
+            } elseif ($this->modalSedeId) {
+                $carreraIds = DB::table('sede_carrera')
+                    ->where('sede_id', $this->modalSedeId)
+                    ->pluck('carrera_id');
+                $q->whereIn('carrera_id', $carreraIds);
+            }
+            return $q;
         }
 
-        $sesionActiva = $this->sesionActivaCatedratico();
-
-        return view('livewire.sesiones.index', compact('clases', 'sesiones', 'hoyTiene', 'sesionActiva'));
+        return Clase::whereIn('id', $this->todasClasesIdsCatedratico());
     }
 
-    public function updatedClaseId(): void
+    /** Query principal de la tabla de sesiones, filtrado por rol. */
+    private function querySesiones(): \Illuminate\Database\Eloquent\Builder
     {
-        if ($this->claseId) {
-            $this->autorizarClase($this->claseId);
+        $q = Sesion::with(['clase.catedratico', 'clase.carrera'])
+            ->withCount(['asistencias', 'participaciones'])
+            ->orderByDesc('fecha')
+            ->orderByDesc('id');
+
+        if ($this->esAdmin()) {
+            if ($this->filterClaseId) {
+                $q->where('clase_id', $this->filterClaseId);
+            } elseif ($this->filterCarreraId) {
+                $q->whereHas('clase', fn($c) => $c->where('carrera_id', $this->filterCarreraId));
+            } elseif ($this->filterSedeId) {
+                $carreraIds = DB::table('sede_carrera')
+                    ->where('sede_id', $this->filterSedeId)
+                    ->pluck('carrera_id');
+                $q->whereHas('clase', fn($c) => $c->whereIn('carrera_id', $carreraIds));
+            }
+            if ($this->filterCatedratico) {
+                $q->whereHas('clase.catedratico', fn($u) =>
+                    $u->where('nombre', 'like', '%' . $this->filterCatedratico . '%')
+                );
+            }
+        } else {
+            $q->whereIn('clase_id', $this->todasClasesIdsCatedratico());
         }
+
+        return $q;
+    }
+
+    // ─── Watchers modal ───────────────────────────────────────────────────────
+
+    public function updatedModalSedeId(): void
+    {
+        $this->modalCarreraId = null;
+        $this->modalClaseId   = null;
+    }
+
+    public function updatedModalCarreraId(): void
+    {
+        $this->modalClaseId = null;
+    }
+
+    // ─── Watchers filtros ─────────────────────────────────────────────────────
+
+    public function updatedFilterSedeId(): void
+    {
+        $this->filterCarreraId = null;
+        $this->filterClaseId   = null;
+    }
+
+    public function updatedFilterCarreraId(): void
+    {
+        $this->filterClaseId = null;
+    }
+
+    // ─── Acciones ────────────────────────────────────────────────────────────
+
+    public function abrirModal(): void
+    {
+        $this->showModal      = true;
+        $this->modalSedeId    = null;
+        $this->modalCarreraId = null;
+        $this->modalClaseId   = null;
+        $this->resetErrorBag();
+    }
+
+    public function cerrarModal(): void
+    {
+        $this->showModal = false;
     }
 
     public function crear(): void
     {
-        if (!$this->claseId) return;
+        if (!$this->modalClaseId) {
+            $this->addError('modalClaseId', 'Debes seleccionar un curso.');
+            return;
+        }
 
-        $this->autorizarClase($this->claseId);
+        $clase = $this->queryClasesModal()->find($this->modalClaseId);
+        if (!$clase) {
+            $this->addError('modalClaseId', 'Clase no autorizada.');
+            return;
+        }
 
-        // Para catedráticos: bloquear si ya existe alguna sesión activa en cualquier clase
-        $user = auth()->user();
-        if (!$user->isAdmin()) {
+        // Catedrático: bloquear si ya tiene sesión activa hoy
+        if (!$this->esAdmin()) {
             $activa = $this->sesionActivaCatedratico();
             if ($activa) {
-                $this->addError('sesion', 'Debes finalizar la sesión activa de "' . $activa->clase->nombre . '" antes de crear una nueva.');
+                $this->addError('modalClaseId',
+                    'Ya tienes una sesión activa en "' . $activa->clase->nombre . '". Finalízala primero.'
+                );
                 return;
             }
         }
 
-        // Evitar duplicado para el mismo día en esta clase
-        $existe = Sesion::where('clase_id', $this->claseId)
-            ->whereDate('fecha', today())
-            ->exists();
-
-        if ($existe) return;
+        // Evitar duplicado del mismo día en esta clase
+        if (Sesion::where('clase_id', $this->modalClaseId)->whereDate('fecha', today())->exists()) {
+            $this->addError('modalClaseId', 'Ya existe una sesión para hoy en este curso.');
+            return;
+        }
 
         Sesion::create([
-            'clase_id'   => $this->claseId,
+            'clase_id'   => $this->modalClaseId,
             'fecha'      => today(),
             'finalizada' => false,
         ]);
+
+        $this->showModal = false;
     }
 
     public function finalizar(int $sesionId): void
     {
         $sesion = Sesion::findOrFail($sesionId);
-        $this->autorizarClase($sesion->clase_id);
 
-        $sesion->update([
-            'finalizada' => true,
-            'token'      => null,
-            'expiracion' => null,
-        ]);
+        if (!$this->esAdmin()) {
+            abort_unless($this->todasClasesIdsCatedratico()->contains($sesion->clase_id), 403);
+        }
+
+        $sesion->update(['finalizada' => true, 'token' => null, 'expiracion' => null]);
     }
 
     public function reabrir(int $sesionId): void
     {
-        // Solo admin puede reabrir; catedráticos no pueden (evita romper la restricción)
-        $user = auth()->user();
-        if (!$user->isAdmin()) return;
+        if (!$this->esAdmin()) return;
 
-        Sesion::findOrFail($sesionId)->update(['finalizada' => false]);
+        $sesion = Sesion::findOrFail($sesionId);
+        // Solo se permite reabrir sesiones de hoy
+        if ($sesion->fecha->isToday()) {
+            $sesion->update(['finalizada' => false]);
+        }
     }
 
     public function eliminar(int $sesionId): void
     {
         $sesion = Sesion::withCount('asistencias')->findOrFail($sesionId);
 
-        // Verificar acceso
-        $this->autorizarClase($sesion->clase_id);
+        if (!$this->esAdmin()) {
+            abort_unless($this->todasClasesIdsCatedratico()->contains($sesion->clase_id), 403);
+        }
 
         if ($sesion->asistencias_count > 0) return;
-
         $sesion->delete();
+    }
+
+    // ─── Render ──────────────────────────────────────────────────────────────
+
+    public function render(): \Illuminate\View\View
+    {
+        $esAdmin      = $this->esAdmin();
+        $sesiones     = $this->querySesiones()->get();
+        $sesionActiva = $this->sesionActivaCatedratico();
+
+        // ── Modal ─────────────────────────────────────────────────────────────
+        $clasesModal   = $this->queryClasesModal()->orderBy('nombre')->get();
+        $sedesModal    = $esAdmin ? Sede::orderBy('nombre')->get() : collect();
+        $carrerasModal = $esAdmin
+            ? ($this->modalSedeId
+                ? Carrera::whereHas('sedes', fn($q) => $q->where('sede.id', $this->modalSedeId))->orderBy('nombre')->get()
+                : Carrera::orderBy('nombre')->get())
+            : collect();
+
+        // ── Filtros tabla admin ───────────────────────────────────────────────
+        $sedes    = $esAdmin ? Sede::orderBy('nombre')->get() : collect();
+        $carreras = $esAdmin
+            ? ($this->filterSedeId
+                ? Carrera::whereHas('sedes', fn($q) => $q->where('sede.id', $this->filterSedeId))->orderBy('nombre')->get()
+                : Carrera::orderBy('nombre')->get())
+            : collect();
+
+        $clasesFilter = collect();
+        if ($esAdmin && ($this->filterCarreraId || $this->filterSedeId)) {
+            if ($this->filterCarreraId) {
+                $clasesFilter = Clase::where('carrera_id', $this->filterCarreraId)->orderBy('nombre')->get();
+            } else {
+                $carreraIds   = DB::table('sede_carrera')->where('sede_id', $this->filterSedeId)->pluck('carrera_id');
+                $clasesFilter = Clase::whereIn('carrera_id', $carreraIds)->orderBy('nombre')->get();
+            }
+        }
+
+        return view('livewire.sesiones.index', compact(
+            'esAdmin', 'sesiones', 'sesionActiva',
+            'clasesModal', 'sedesModal', 'carrerasModal',
+            'sedes', 'carreras', 'clasesFilter',
+        ));
     }
 }

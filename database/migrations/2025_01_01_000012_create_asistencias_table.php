@@ -14,6 +14,8 @@ return new class extends Migration
             $table->foreignId('estudiante_id')->constrained('estudiante')->cascadeOnDelete();
             $table->timestamp('fecha_hora')->useCurrent();
             $table->string('selfie', 255)->nullable();
+            $table->decimal('latitud',  10, 7)->nullable();
+            $table->decimal('longitud', 10, 7)->nullable();
             $table->unique(['sesion_id', 'estudiante_id']);
         });
     }

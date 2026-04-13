@@ -104,23 +104,32 @@
                         {!! $qrSvg !!}
                     </div>
 
-                    <div class="text-center mb-4">
-                        @php
-                            $segsRestantes = $sesion->expiracion->gt(now())
-                                ? (int) now()->diffInSeconds($sesion->expiracion)
-                                : 0;
-                            $minsDisplay = floor($segsRestantes / 60);
-                            $segsDisplay = $segsRestantes % 60;
-                        @endphp
+                    @php
+                        $segsIniciales = $sesion->expiracion->gt(now())
+                            ? (int) now()->diffInSeconds($sesion->expiracion) : 0;
+                    @endphp
+                    <div class="text-center mb-4"
+                         x-data="{
+                             r: {{ $segsIniciales }},
+                             get display() {
+                                 const m = Math.floor(this.r / 60);
+                                 const s = this.r % 60;
+                                 return String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+                             },
+                             init() {
+                                 const t = setInterval(() => {
+                                     if (this.r > 0) this.r--;
+                                     else clearInterval(t);
+                                 }, 1000);
+                             }
+                         }"
+                         wire:key="qr-countdown-{{ $sesion->token }}">
                         <p class="text-xs text-gray-400 mb-1">Tiempo restante</p>
-                        <p class="text-4xl font-black font-mono {{ $segsRestantes <= 60 ? 'text-red-500' : 'text-[#000b60] dark:text-[#bcc2ff]' }}">
-                            {{ sprintf('%02d:%02d', $minsDisplay, $segsDisplay) }}
-                        </p>
-                        @if($segsRestantes <= 60)
-                            <p class="text-xs text-red-500 font-semibold mt-1">⚠ Menos de 1 minuto</p>
-                        @else
-                            <p class="text-xs text-green-600 font-semibold mt-1">QR activo</p>
-                        @endif
+                        <p class="text-4xl font-black font-mono"
+                           :class="r <= 60 ? 'text-red-500' : 'text-[#000b60] dark:text-[#bcc2ff]'"
+                           x-text="display"></p>
+                        <p x-show="r <= 60 && r > 0" class="text-xs text-red-500 font-semibold mt-1">⚠ Menos de 1 minuto</p>
+                        <p x-show="r > 60" class="text-xs text-green-600 font-semibold mt-1">QR activo</p>
                     </div>
 
                     <div class="w-full bg-gray-50 dark:bg-[#162a35] rounded-lg px-3 py-2 text-xs text-gray-400 text-center break-all mb-4">

@@ -3,9 +3,11 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Clase extends Model
 {
+    use SoftDeletes;
     protected $table = 'clase';
 
     protected $fillable = [
@@ -15,9 +17,14 @@ class Clase extends Model
         'carrera_id',
         'codigo',
         'ciclo',
+        'metodo_actividades',
+        'max_puntos_extra',
     ];
 
-    protected $casts = ['ciclo' => 'integer'];
+    protected $casts = [
+        'ciclo'            => 'integer',
+        'max_puntos_extra' => 'decimal:1',
+    ];
 
     /** Semestre según ciclo: impares = Ene-Jun, pares = Jul-Dic */
     public function getSemestreAttribute(): ?string

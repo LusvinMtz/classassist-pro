@@ -12,6 +12,7 @@ class Actividad extends Model
 
     protected $fillable = [
         'clase_id',
+        'grupo_sesion_id',
         'nombre',
         'punteo_max',
         'orden',
@@ -25,9 +26,19 @@ class Actividad extends Model
         ];
     }
 
+    public function esGrupal(): bool
+    {
+        return $this->grupo_sesion_id !== null;
+    }
+
     public function clase()
     {
         return $this->belongsTo(Clase::class, 'clase_id');
+    }
+
+    public function grupoSesion()
+    {
+        return $this->belongsTo(\App\Models\Sesion::class, 'grupo_sesion_id');
     }
 
     public function notas()

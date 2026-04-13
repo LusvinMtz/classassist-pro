@@ -23,6 +23,12 @@ class Index extends Component
     public string $ganadorNombre = '';
     public bool   $showModal     = false;
 
+    // Grupos
+    public string $modo     = 'grupos';
+    public int    $cantidad = 4;
+    public array  $preview  = [];
+    public bool   $generado = false;
+
     #[Validate('nullable|numeric|min:0|max:10')]
     public ?string $calificacion = null;
 
@@ -58,6 +64,7 @@ class Index extends Component
         $ids = $user->clasesImpartidas()->pluck('clase.id');
         return Sesion::whereIn('clase_id', $ids)
             ->where('finalizada', false)
+            ->whereDate('fecha', today())
             ->latest()
             ->first();
     }
@@ -144,6 +151,7 @@ class Index extends Component
         $this->sesionId = $sesion?->id;
         $this->tab      = 'qr';
         $this->reset(['ganadorId', 'ganadorNombre']);
+        $this->resetGenerado();
     }
 
     /* ─── QR ─────────────────────────────────────────────────────────── */
@@ -153,7 +161,7 @@ class Index extends Component
         if (!$this->sesionId) return;
 
         $sesion = Sesion::findOrFail($this->sesionId);
-        if ($sesion->finalizada) return;
+        if (!$sesion->esOperativa()) return;
 
         $sesion->update([
             'token'      => Str::random(40),
@@ -168,7 +176,7 @@ class Index extends Component
         if (!$this->sesionId) return;
 
         $sesion = Sesion::findOrFail($this->sesionId);
-        if ($sesion->finalizada) return;
+        if (!$sesion->esOperativa()) return;
 
         $presentes = Estudiante::whereHas('asistencias', fn ($q) =>
             $q->where('sesion_id', $this->sesionId)
@@ -220,5 +228,179 @@ class Index extends Component
         $this->showModal = false;
         $this->reset(['calificacion', 'comentario']);
         $this->resetValidation();
+    }
+
+    /* ─── Grupos ─────────────────────────────────────────────────────── */
+
+    public function generar(): void
+    {
+        $this->validate([
+            'cantidad' => 'required|integer|min:2|max:50',
+        ], [
+            'cantidad.min' => 'El valor mínimo es 2.',
+            'cantidad.max' => 'El valor máximo es 50.',
+        ]);
+
+        if (!$this->sesionId) return;
+
+        $presentes = Estudiante::whereHas('asistencias', fn ($q) =>
+            $q->where('sesion_id', $this->sesionId)
+        )->get();
+
+        if ($presentes->isEmpty()) return;
+
+        $total = $presentes->count();
+
+        if ($this->modo === 'grupos') {
+            $numGrupos = min($this->cantidad, $total);
+        } else {
+            $numGrupos = (int) ceil($total / max(1, $this->cantidad));
+        }
+
+        $coOcurrencia = $this->buildCoOccurrenceMatrix();
+        $lista = $presentes->map(fn ($e) => ['id' => $e->id, 'nombre' => $e->nombre])->values()->toArray();
+        $mejorGrupos = $this->optimizarGrupos($lista, $numGrupos, $coOcurrencia);
+
+        $this->preview = [];
+        foreach ($mejorGrupos as $i => $miembros) {
+            $this->preview[] = [
+                'nombre'   => 'Grupo ' . ($i + 1),
+                'miembros' => $miembros,
+            ];
+        }
+
+        $this->generado = true;
+    }
+
+    public function guardarGrupos(): void
+    {
+        if (!$this->sesionId || empty($this->preview)) return;
+
+        Grupo::where('sesion_id', $this->sesionId)->delete();
+
+        foreach ($this->preview as $g) {
+            $grupo = Grupo::create([
+                'sesion_id' => $this->sesionId,
+                'nombre'    => $g['nombre'],
+            ]);
+            $grupo->estudiantes()->attach(
+                collect($g['miembros'])->pluck('id')->toArray()
+            );
+        }
+
+        $this->resetGenerado();
+    }
+
+    public function eliminarGrupos(): void
+    {
+        if (!$this->sesionId) return;
+        Grupo::where('sesion_id', $this->sesionId)->delete();
+        $this->resetGenerado();
+    }
+
+    private function resetGenerado(): void
+    {
+        $this->preview  = [];
+        $this->generado = false;
+    }
+
+    private function buildCoOccurrenceMatrix(): array
+    {
+        $sesion = Sesion::find($this->sesionId);
+        if (!$sesion) return [];
+
+        $sesionesAnteriores = Sesion::where('clase_id', $sesion->clase_id)
+            ->where('id', '!=', $this->sesionId)
+            ->pluck('id');
+
+        if ($sesionesAnteriores->isEmpty()) return [];
+
+        $grupos = Grupo::whereIn('sesion_id', $sesionesAnteriores)
+            ->with('estudiantes:id')
+            ->get();
+
+        $matrix = [];
+        foreach ($grupos as $grupo) {
+            $ids = $grupo->estudiantes->pluck('id')->sort()->values()->toArray();
+            for ($i = 0; $i < count($ids); $i++) {
+                for ($j = $i + 1; $j < count($ids); $j++) {
+                    $key = $ids[$i] . '-' . $ids[$j];
+                    $matrix[$key] = ($matrix[$key] ?? 0) + 1;
+                }
+            }
+        }
+
+        return $matrix;
+    }
+
+    private function parScore(int $a, int $b, array $matrix): int
+    {
+        $key = min($a, $b) . '-' . max($a, $b);
+        return $matrix[$key] ?? 0;
+    }
+
+    private function assignmentScore(array $grupos, array $matrix): int
+    {
+        $score = 0;
+        foreach ($grupos as $grupo) {
+            $ids = array_column($grupo, 'id');
+            for ($i = 0; $i < count($ids); $i++) {
+                for ($j = $i + 1; $j < count($ids); $j++) {
+                    $score += $this->parScore($ids[$i], $ids[$j], $matrix);
+                }
+            }
+        }
+        return $score;
+    }
+
+    private function optimizarGrupos(array $lista, int $numGrupos, array $matrix): array
+    {
+        $mejorScore  = PHP_INT_MAX;
+        $mejorGrupos = null;
+
+        for ($intento = 0; $intento < 30; $intento++) {
+            shuffle($lista);
+            $grupos = array_fill(0, $numGrupos, []);
+            foreach ($lista as $idx => $estudiante) {
+                $grupos[$idx % $numGrupos][] = $estudiante;
+            }
+            $grupos = $this->busquedaLocal($grupos, $matrix);
+            $score  = $this->assignmentScore($grupos, $matrix);
+            if ($score < $mejorScore) {
+                $mejorScore  = $score;
+                $mejorGrupos = $grupos;
+                if ($score === 0) break;
+            }
+        }
+
+        return $mejorGrupos ?? array_fill(0, $numGrupos, []);
+    }
+
+    private function busquedaLocal(array $grupos, array $matrix): array
+    {
+        $numGrupos = count($grupos);
+        $mejorado  = true;
+
+        while ($mejorado) {
+            $mejorado = false;
+            for ($g1 = 0; $g1 < $numGrupos - 1; $g1++) {
+                for ($g2 = $g1 + 1; $g2 < $numGrupos; $g2++) {
+                    for ($i = 0; $i < count($grupos[$g1]); $i++) {
+                        for ($j = 0; $j < count($grupos[$g2]); $j++) {
+                            $antes = $this->assignmentScore($grupos, $matrix);
+                            [$grupos[$g1][$i], $grupos[$g2][$j]] = [$grupos[$g2][$j], $grupos[$g1][$i]];
+                            $despues = $this->assignmentScore($grupos, $matrix);
+                            if ($despues < $antes) {
+                                $mejorado = true;
+                            } else {
+                                [$grupos[$g1][$i], $grupos[$g2][$j]] = [$grupos[$g2][$j], $grupos[$g1][$i]];
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        return $grupos;
     }
 }

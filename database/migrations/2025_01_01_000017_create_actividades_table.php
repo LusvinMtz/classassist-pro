@@ -11,6 +11,7 @@ return new class extends Migration
         Schema::create('actividad', function (Blueprint $table) {
             $table->id();
             $table->foreignId('clase_id')->constrained('clase')->cascadeOnDelete();
+            $table->foreignId('grupo_sesion_id')->nullable()->constrained('sesion')->nullOnDelete();
             $table->string('nombre', 100);
             $table->decimal('punteo_max', 5, 2)->default(100.00);
             $table->tinyInteger('orden')->default(0);

@@ -14,12 +14,16 @@ class Asistencia extends Model
         'sesion_id',
         'estudiante_id',
         'selfie',
+        'latitud',
+        'longitud',
     ];
 
     protected function casts(): array
     {
         return [
             'fecha_hora' => 'datetime',
+            'latitud'    => 'decimal:7',
+            'longitud'   => 'decimal:7',
         ];
     }
 

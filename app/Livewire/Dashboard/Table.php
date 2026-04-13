@@ -2,33 +2,86 @@
 
 namespace App\Livewire\Dashboard;
 
+use App\Models\Carrera;
 use App\Models\Clase;
+use App\Models\Sede;
 use App\Models\Sesion;
 use Illuminate\Support\Facades\DB;
 use Livewire\Component;
 
 class Table extends Component
 {
-    public ?int $claseId = null;
-    public string $periodo = '10';
+    // Filtros admin (cascada)
+    public ?int $sedeId    = null;
+    public ?int $carreraId = null;
+
+    // Filtro compartido
+    public ?int    $claseId    = null;
+    public string  $fechaDesde = '';
+    public string  $fechaHasta = '';
+
+    // ─── Inicialización ──────────────────────────────────────────────────────
 
     public function mount(): void
     {
+        // Default: todo el historial para no ocultar datos de años anteriores
+        $this->fechaHasta = now()->format('Y-m-d');
+        $this->fechaDesde = '';
+
         $primera = $this->queryClases()->orderBy('nombre')->first();
         if ($primera) {
             $this->claseId = $primera->id;
         }
     }
 
+    // ─── Helpers de acceso ───────────────────────────────────────────────────
+
+    private function esAdmin(): bool
+    {
+        return auth()->user()->isAdmin();
+    }
+
     private function queryClases(): \Illuminate\Database\Eloquent\Builder
     {
-        $user = auth()->user();
-        if ($user->isAdmin()) {
-            return Clase::query();
+        if ($this->esAdmin()) {
+            $q = Clase::query();
+            if ($this->carreraId) {
+                $q->where('carrera_id', $this->carreraId);
+            } elseif ($this->sedeId) {
+                $carreraIds = DB::table('sede_carrera')
+                    ->where('sede_id', $this->sedeId)
+                    ->pluck('carrera_id');
+                $q->whereIn('carrera_id', $carreraIds);
+            }
+            return $q;
         }
-        // Catedrático: solo sus clases asignadas
-        $ids = $user->clasesImpartidas()->pluck('clase.id');
+
+        // Catedrático: clases asignadas via pivot O donde es el usuario_id directo
+        $user = auth()->user();
+        $porPivot    = $user->clasesImpartidas()->pluck('clase.id');
+        $porUsuarioId = Clase::where('usuario_id', $user->id)->pluck('id');
+        $ids = $porPivot->merge($porUsuarioId)->unique();
+
         return Clase::whereIn('id', $ids);
+    }
+
+    // ─── Watchers ────────────────────────────────────────────────────────────
+
+    public function updatedSedeId(): void
+    {
+        $this->carreraId = null;
+        $this->claseId   = null;
+        $primera = $this->queryClases()->orderBy('nombre')->first();
+        $this->claseId = $primera?->id;
+        $this->dispatch('dashboard-charts', data: $this->buildChartData());
+    }
+
+    public function updatedCarreraId(): void
+    {
+        $this->claseId = null;
+        $primera = $this->queryClases()->orderBy('nombre')->first();
+        $this->claseId = $primera?->id;
+        $this->dispatch('dashboard-charts', data: $this->buildChartData());
     }
 
     public function updatedClaseId(): void
@@ -36,12 +89,25 @@ class Table extends Component
         $this->dispatch('dashboard-charts', data: $this->buildChartData());
     }
 
-    public function updatedPeriodo(): void
+    public function updatedFechaDesde(): void
     {
         $this->dispatch('dashboard-charts', data: $this->buildChartData());
     }
 
-    // ─── KPIs globales ────────────────────────────────────────────────────────
+    public function updatedFechaHasta(): void
+    {
+        $this->dispatch('dashboard-charts', data: $this->buildChartData());
+    }
+
+    /** Aplica un atajo de rango de fechas en un solo request */
+    public function aplicarAtajo(string $desde, string $hasta): void
+    {
+        $this->fechaDesde = $desde;
+        $this->fechaHasta = $hasta;
+        $this->dispatch('dashboard-charts', data: $this->buildChartData());
+    }
+
+    // ─── KPIs ────────────────────────────────────────────────────────────────
 
     private function computeKpis(): array
     {
@@ -51,7 +117,7 @@ class Table extends Component
 
         $totalEstudiantes = DB::table('clase_estudiante')
             ->whereIn('clase_id', $claseIds)
-            ->distinct('estudiante_id')
+            ->distinct()
             ->count('estudiante_id');
 
         $sesionesMes = Sesion::whereIn('clase_id', $claseIds)
@@ -60,7 +126,6 @@ class Table extends Component
             ->count();
 
         $totalAsistidas = $totalPosibles = 0;
-
         if ($claseIds->isNotEmpty()) {
             $resumen = DB::table('sesion')
                 ->whereIn('sesion.clase_id', $claseIds)
@@ -87,22 +152,25 @@ class Table extends Component
         return compact('totalClases', 'totalEstudiantes', 'sesionesMes', 'avgAsistencia');
     }
 
-    // ─── Sesiones del periodo seleccionado ────────────────────────────────────
+    // ─── Sesiones del rango de fechas ────────────────────────────────────────
 
     private function sesionesDelPeriodo(): \Illuminate\Support\Collection
     {
         if (!$this->claseId) return collect();
 
-        $q = Sesion::where('clase_id', $this->claseId)->orderByDesc('fecha');
+        $q = Sesion::where('clase_id', $this->claseId)->orderBy('fecha');
 
-        if ($this->periodo !== 'todo') {
-            $q->limit((int) $this->periodo);
+        if ($this->fechaDesde) {
+            $q->whereDate('fecha', '>=', $this->fechaDesde);
+        }
+        if ($this->fechaHasta) {
+            $q->whereDate('fecha', '<=', $this->fechaHasta);
         }
 
-        return $q->get()->sortBy('fecha')->values();
+        return $q->get();
     }
 
-    // ─── Builders de gráficas ─────────────────────────────────────────────────
+    // ─── Gráficas ────────────────────────────────────────────────────────────
 
     private function chartAsistenciaSesion(array $sesionIds, $sesiones): array
     {
@@ -176,28 +244,29 @@ class Table extends Component
         ];
     }
 
-    private function chartCalificaciones(): array
+    private function chartRankingParticipacion(array $sesionIds): array
     {
-        if (!$this->claseId) {
-            return ['labels' => [], 'data' => [], 'totales' => []];
+        if (empty($sesionIds) || !$this->claseId) {
+            return ['labels' => [], 'data' => [], 'promedios' => []];
         }
 
-        $data = DB::table('calificacion')
-            ->join('tipo_calificacion', 'tipo_calificacion.id', '=', 'calificacion.tipo_calificacion_id')
-            ->where('calificacion.clase_id', $this->claseId)
-            ->whereNotNull('calificacion.nota')
+        $rows = DB::table('participacion')
+            ->join('estudiante', 'estudiante.id', '=', 'participacion.estudiante_id')
+            ->whereIn('participacion.sesion_id', $sesionIds)
             ->select(
-                'tipo_calificacion.nombre',
-                DB::raw('ROUND(AVG(calificacion.nota), 2) as promedio'),
-                DB::raw('COUNT(*) as total')
+                'estudiante.nombre',
+                DB::raw('COUNT(*) as total'),
+                DB::raw('ROUND(AVG(calificacion), 1) as promedio_cal')
             )
-            ->groupBy('tipo_calificacion.id', 'tipo_calificacion.nombre')
+            ->groupBy('estudiante.id', 'estudiante.nombre')
+            ->orderByDesc('total')
+            ->limit(15)
             ->get();
 
         return [
-            'labels'  => $data->pluck('nombre')->toArray(),
-            'data'    => $data->map(fn($r) => (float) $r->promedio)->toArray(),
-            'totales' => $data->pluck('total')->toArray(),
+            'labels'    => $rows->pluck('nombre')->toArray(),
+            'data'      => $rows->map(fn($r) => (int) $r->total)->toArray(),
+            'promedios' => $rows->map(fn($r) => (float) $r->promedio_cal)->toArray(),
         ];
     }
 
@@ -208,7 +277,7 @@ class Table extends Component
                 'asistenciaSesion'     => ['labels' => [], 'presentes' => [], 'ausentes' => [], 'totalEst' => 0],
                 'asistenciaEstudiante' => ['labels' => [], 'data' => [], 'colores' => []],
                 'participaciones'      => ['labels' => [], 'data' => [], 'promedio' => []],
-                'calificaciones'       => ['labels' => [], 'data' => [], 'totales' => []],
+                'rankingParticipacion' => ['labels' => [], 'data' => [], 'promedios' => []],
             ];
         }
 
@@ -216,17 +285,27 @@ class Table extends Component
         $sesionIds = $sesiones->pluck('id')->toArray();
 
         return [
-            'asistenciaSesion'     => $this->chartAsistenciaSesion($sesionIds, $sesiones),
-            'asistenciaEstudiante' => $this->chartAsistenciaEstudiante($sesionIds),
-            'participaciones'      => $this->chartParticipaciones($sesionIds, $sesiones),
-            'calificaciones'       => $this->chartCalificaciones(),
+            'asistenciaSesion'       => $this->chartAsistenciaSesion($sesionIds, $sesiones),
+            'asistenciaEstudiante'   => $this->chartAsistenciaEstudiante($sesionIds),
+            'participaciones'        => $this->chartParticipaciones($sesionIds, $sesiones),
+            'rankingParticipacion'   => $this->chartRankingParticipacion($sesionIds),
         ];
     }
+
+    // ─── Render ──────────────────────────────────────────────────────────────
 
     public function render(): \Illuminate\View\View
     {
         $clases    = $this->queryClases()->orderBy('nombre')->get();
         $chartData = $this->buildChartData();
+
+        // Datos para filtros admin en cascada
+        $sedes    = $this->esAdmin() ? Sede::orderBy('nombre')->get() : collect();
+        $carreras = $this->esAdmin()
+            ? ($this->sedeId
+                ? Carrera::whereHas('sedes', fn($q) => $q->where('sede.id', $this->sedeId))->orderBy('nombre')->get()
+                : Carrera::orderBy('nombre')->get())
+            : collect();
 
         $sesionesRecientes = $this->claseId
             ? Sesion::where('clase_id', $this->claseId)
@@ -244,10 +323,13 @@ class Table extends Component
         return view('livewire.dashboard.table', [
             'kpis'              => $this->computeKpis(),
             'clases'            => $clases,
+            'sedes'             => $sedes,
+            'carreras'          => $carreras,
             'chartData'         => $chartData,
             'sesionesRecientes' => $sesionesRecientes,
             'totalEstClase'     => $totalEstClase,
             'claseNombre'       => $this->claseId ? $clases->firstWhere('id', $this->claseId)?->nombre : null,
+            'esAdmin'           => $this->esAdmin(),
         ]);
     }
 }

@@ -13,6 +13,7 @@ class ActividadNota extends Model
     protected $fillable = [
         'actividad_id',
         'estudiante_id',
+        'grupo_id',
         'nota',
     ];
 
@@ -31,5 +32,10 @@ class ActividadNota extends Model
     public function estudiante()
     {
         return $this->belongsTo(Estudiante::class, 'estudiante_id');
+    }
+
+    public function grupo()
+    {
+        return $this->belongsTo(Grupo::class, 'grupo_id');
     }
 }

@@ -692,3 +692,4 @@ INSERT INTO migrations (migration, batch) VALUES
 
 
 SET FOREIGN_KEY_CHECKS = 1;
+

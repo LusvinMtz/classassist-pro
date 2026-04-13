@@ -13,6 +13,7 @@
 
         <!-- Scripts -->
         @vite(['resources/css/app.css', 'resources/js/app.js'])
+        <script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
 
         <style>
             :root {
@@ -22,6 +23,9 @@
                 --guest-subtitle: #7986a3;
                 --guest-card-bg: #ffffff;
                 --guest-footer: #b0b8cc;
+                --guest-muted: #4a5568;
+                --guest-input-bg: #eff3fc;
+                --guest-input-border: #dde6f5;
             }
             @media (prefers-color-scheme: dark) {
                 :root {
@@ -31,6 +35,9 @@
                     --guest-subtitle: #8890a8;
                     --guest-card-bg: #1e333c;
                     --guest-footer: #767683;
+                    --guest-muted: #8890a8;
+                    --guest-input-bg: #162532;
+                    --guest-input-border: #2a3f4d;
                 }
             }
         </style>

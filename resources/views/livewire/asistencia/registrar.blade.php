@@ -1,12 +1,10 @@
 <div class="w-full max-w-sm mx-auto"
-     x-data="selfieApp()"
+     x-data="registroApp()"
      x-init="init()">
 
     {{-- Logo / Branding --}}
     <div class="flex items-center justify-center gap-3 mb-8">
-        <div class="w-12 h-12 rounded-xl bg-[#000b60] flex items-center justify-center text-white font-black text-2xl">
-            C
-        </div>
+        <div class="w-12 h-12 rounded-xl bg-[#000b60] flex items-center justify-center text-white font-black text-2xl">C</div>
         <div>
             <h2 class="font-black text-xl text-[#000b60]">ClassAssist Pro</h2>
             <p class="text-xs text-gray-500">Registro de Asistencia</p>
@@ -46,11 +44,66 @@
 
             <div class="space-y-5">
 
-                {{-- Carné --}}
+                {{-- ── Ubicación GPS ─────────────────────────────────────────── --}}
                 <div>
-                    <label class="block text-sm font-bold text-[#000b60] mb-2">Ingresa tu Carné</label>
+                    <label class="block text-sm font-bold text-[#000b60] mb-2">
+                        Ubicación GPS
+                        <span class="text-red-500">*</span>
+                    </label>
+
+                    {{-- Obteniendo... --}}
+                    <div x-show="gpsEstado === 'obteniendo'"
+                         class="flex items-center gap-3 rounded-xl border-2 border-blue-200 bg-blue-50 px-4 py-3">
+                        <svg class="h-5 w-5 animate-spin text-blue-500 shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+                        </svg>
+                        <p class="text-sm font-semibold text-blue-700">Obteniendo tu ubicación…</p>
+                    </div>
+
+                    {{-- Éxito --}}
+                    <div x-show="gpsEstado === 'ok'"
+                         class="flex items-center gap-3 rounded-xl border-2 border-green-300 bg-green-50 px-4 py-3">
+                        <span class="material-symbols-outlined text-green-500 shrink-0" style="font-size:22px">location_on</span>
+                        <div class="flex-1 min-w-0">
+                            <p class="text-sm font-bold text-green-700">Ubicación obtenida</p>
+                            <p class="text-xs text-green-600 font-mono truncate"
+                               x-text="latitudStr + ', ' + longitudStr"></p>
+                        </div>
+                        <span class="material-symbols-outlined text-green-400 shrink-0" style="font-size:20px">check_circle</span>
+                    </div>
+
+                    {{-- Error --}}
+                    <div x-show="gpsEstado === 'error'"
+                         class="rounded-xl border-2 border-red-300 bg-red-50 px-4 py-3 space-y-2">
+                        <div class="flex items-center gap-2">
+                            <span class="material-symbols-outlined text-red-500 shrink-0" style="font-size:22px">location_off</span>
+                            <p class="text-sm font-bold text-red-700">No se pudo obtener la ubicación</p>
+                        </div>
+                        <p class="text-xs text-red-600" x-text="gpsError"></p>
+                        <p class="text-xs text-red-500 font-semibold">
+                            Debes permitir el acceso a tu ubicación para registrar asistencia.
+                        </p>
+                        <button @click="pedirUbicacion()"
+                                class="w-full mt-1 border border-red-300 bg-white text-red-600 text-xs font-bold py-2 rounded-lg hover:bg-red-50 transition flex items-center justify-center gap-1">
+                            <span class="material-symbols-outlined" style="font-size:15px">refresh</span>
+                            Intentar de nuevo
+                        </button>
+                    </div>
+
+                    @error('latitud')
+                        <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                    @enderror
+                </div>
+
+                {{-- ── Carné ─────────────────────────────────────────────────── --}}
+                <div>
+                    <label class="block text-sm font-bold text-[#000b60] mb-2">
+                        Ingresa tu Carné
+                        <span class="text-red-500">*</span>
+                    </label>
                     <input wire:model="carnet"
-                           x-on:keydown.enter="$wire.registrar()"
+                           x-on:keydown.enter="enviarRegistro()"
                            type="text"
                            placeholder="Ej. 202300001"
                            autofocus
@@ -64,14 +117,13 @@
                     @enderror
                 </div>
 
-                {{-- Selfie --}}
+                {{-- ── Selfie ────────────────────────────────────────────────── --}}
                 <div>
                     <label class="block text-sm font-bold text-[#000b60] mb-2">
                         Selfie de verificación
                         <span class="text-gray-400 font-normal">(opcional)</span>
                     </label>
 
-                    {{-- Vista previa de selfie tomada --}}
                     <div x-show="selfieDataUrl" class="relative mb-3">
                         <img :src="selfieDataUrl"
                              class="w-full rounded-xl border-2 border-green-400 object-cover"
@@ -86,10 +138,8 @@
                         </div>
                     </div>
 
-                    {{-- Cámara en vivo --}}
                     <div x-show="camaraActiva && !selfieDataUrl" class="relative mb-3">
-                        <video x-ref="video"
-                               autoplay playsinline muted
+                        <video x-ref="video" autoplay playsinline muted
                                class="w-full rounded-xl border-2 border-[#000b60] object-cover"
                                style="max-height: 200px; transform: scaleX(-1);"></video>
                         <div class="absolute inset-0 flex items-end justify-center pb-3">
@@ -101,10 +151,8 @@
                         </div>
                     </div>
 
-                    {{-- Canvas oculto para captura --}}
                     <canvas x-ref="canvas" class="hidden"></canvas>
 
-                    {{-- Botón activar cámara --}}
                     <div x-show="!camaraActiva && !selfieDataUrl">
                         <button @click="activarCamara()"
                                 class="w-full border-2 border-dashed border-gray-300 rounded-xl py-4 text-gray-400 hover:border-[#000b60] hover:text-[#000b60] transition flex flex-col items-center gap-1">
@@ -113,7 +161,6 @@
                         </button>
                     </div>
 
-                    {{-- Error de cámara --}}
                     <p x-show="errorCamara" x-text="errorCamara"
                        class="text-xs text-amber-600 mt-1 text-center"></p>
                 </div>
@@ -130,9 +177,19 @@
 
                 {{-- Botón registrar --}}
                 <button @click="enviarRegistro()"
+                        :disabled="gpsEstado !== 'ok'"
                         wire:loading.attr="disabled"
-                        class="w-full bg-[#000b60] text-white py-3 rounded-xl font-bold text-base hover:opacity-90 transition disabled:opacity-60">
-                    <span wire:loading.remove>Registrar Asistencia</span>
+                        :class="gpsEstado !== 'ok'
+                            ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                            : 'bg-[#000b60] text-white hover:opacity-90'"
+                        class="w-full py-3 rounded-xl font-bold text-base transition disabled:opacity-60 flex items-center justify-center gap-2">
+                    <span wire:loading.remove>
+                        <span x-show="gpsEstado !== 'ok'" class="flex items-center gap-2">
+                            <span class="material-symbols-outlined" style="font-size:18px">location_off</span>
+                            Esperando ubicación…
+                        </span>
+                        <span x-show="gpsEstado === 'ok'">Registrar Asistencia</span>
+                    </span>
                     <span wire:loading>Registrando...</span>
                 </button>
 
@@ -147,22 +204,60 @@
 </div>
 
 <script>
-function selfieApp() {
+function registroApp() {
     return {
+        // GPS
+        gpsEstado:   'obteniendo', // obteniendo | ok | error
+        gpsError:    '',
+        latitudStr:  '',
+        longitudStr: '',
+
+        // Cámara
         camaraActiva: false,
         selfieDataUrl: '',
         errorCamara:  '',
         _stream:      null,
 
-        init() {},
+        init() {
+            this.pedirUbicacion();
+        },
+
+        pedirUbicacion() {
+            this.gpsEstado = 'obteniendo';
+            this.gpsError  = '';
+
+            if (!navigator.geolocation) {
+                this.gpsEstado = 'error';
+                this.gpsError  = 'Tu navegador no soporta geolocalización.';
+                return;
+            }
+
+            navigator.geolocation.getCurrentPosition(
+                (pos) => {
+                    const lat = pos.coords.latitude.toFixed(7);
+                    const lng = pos.coords.longitude.toFixed(7);
+                    this.latitudStr  = lat;
+                    this.longitudStr = lng;
+                    this.$wire.set('latitud',  lat);
+                    this.$wire.set('longitud', lng);
+                    this.gpsEstado = 'ok';
+                },
+                (err) => {
+                    this.gpsEstado = 'error';
+                    this.gpsError  = {
+                        1: 'Permiso denegado. Ve a la configuración de tu navegador y permite el acceso a la ubicación.',
+                        2: 'No se pudo determinar la ubicación. Asegúrate de tener GPS activo.',
+                        3: 'Tiempo de espera agotado. Verifica tu señal GPS e intenta de nuevo.',
+                    }[err.code] || 'Error desconocido al obtener la ubicación.';
+                },
+                { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+            );
+        },
 
         async activarCamara() {
             this.errorCamara = '';
             try {
-                this._stream = await navigator.mediaDevices.getUserMedia({
-                    video: { facingMode: 'user' },
-                    audio: false
-                });
+                this._stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
                 this.camaraActiva = true;
                 await this.$nextTick();
                 this.$refs.video.srcObject = this._stream;
@@ -200,6 +295,7 @@ function selfieApp() {
         },
 
         async enviarRegistro() {
+            if (this.gpsEstado !== 'ok') return;
             if (this.selfieDataUrl) {
                 await this.$wire.set('selfieData', this.selfieDataUrl);
             }

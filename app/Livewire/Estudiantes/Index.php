@@ -37,17 +37,28 @@ class Index extends Component
 
     public function render()
     {
-        $clases = Clase::whereHas('catedraticos', function ($q) {$q->where('users.id', auth()->id());})->get();
+        $clases = $this->queryClases()->orderBy('nombre')->get();
         $estudiantes = collect();
 
         if ($this->claseId) {
-            $clase = Clase::where('usuario_id', auth()->id())->find($this->claseId);
+            $clase = $this->queryClases()->find($this->claseId);
             if ($clase) {
                 $estudiantes = $clase->estudiantes()->orderBy('nombre')->get();
             }
         }
 
         return view('livewire.estudiantes.index', compact('clases', 'estudiantes'));
+    }
+
+    private function queryClases(): \Illuminate\Database\Eloquent\Builder
+    {
+        $user = auth()->user();
+
+        if ($user->isAdmin()) {
+            return Clase::where('usuario_id', $user->id);
+        }
+
+        return Clase::whereHas('catedraticos', fn ($q) => $q->where('users.id', $user->id));
     }
 
     // ---- Individual ----
@@ -76,7 +87,7 @@ class Index extends Component
 
         if (!$this->claseId) return;
 
-        $clase = Clase::where('usuario_id', auth()->id())->findOrFail($this->claseId);
+        $clase = $this->queryClases()->findOrFail($this->claseId);
 
         // Carnet único por clase
         $carnetDuplicado = $clase->estudiantes()
@@ -122,7 +133,7 @@ class Index extends Component
     {
         if (!$this->claseId) return;
 
-        Clase::where('usuario_id', auth()->id())
+        $this->queryClases()
             ->findOrFail($this->claseId)
             ->estudiantes()
             ->detach($id);
@@ -151,7 +162,7 @@ class Index extends Component
 
         if (!$this->claseId) return;
 
-        $clase  = Clase::where('usuario_id', auth()->id())->findOrFail($this->claseId);
+        $clase  = $this->queryClases()->findOrFail($this->claseId);
         $import = new EstudiantesImport($clase);
 
         Excel::import($import, $this->archivo->getRealPath());

@@ -58,12 +58,10 @@
 
     </div>
 
-    {{-- Sin clases --}}
-    @if($clases->isEmpty())
+    @if($clases->isEmpty() && !$esAdmin)
         <div class="bg-white dark:bg-[#1e333c] rounded-xl shadow flex flex-col items-center justify-center py-20 text-gray-400 dark:text-gray-500">
             <span class="material-symbols-outlined" style="font-size:56px">school</span>
             <p class="mt-3 font-semibold text-gray-500">No tienes clases registradas aún</p>
-            <p class="text-sm mt-1">Crea una clase para ver estadísticas aquí</p>
             <a href="{{ route('clases.index') }}"
                class="mt-5 bg-[#000b60] text-white px-5 py-2 rounded-lg font-semibold text-sm hover:opacity-90 transition">
                 Ir a Clases
@@ -71,48 +69,108 @@
         </div>
     @else
 
-    {{-- Filtros --}}
-    <div class="bg-white dark:bg-[#1e333c] rounded-xl shadow p-4 mb-6 flex flex-wrap gap-4 items-end">
+    {{-- ── Filtros ─────────────────────────────────────────────────────────── --}}
+    <div class="bg-white dark:bg-[#1e333c] rounded-xl shadow p-4 mb-6">
 
-        <div class="flex-1 min-w-[200px]">
-            <label class="block text-xs font-bold text-[#000b60] dark:text-[#bcc2ff] mb-1.5 uppercase tracking-wide">Clase</label>
-            <select wire:model.live="claseId"
-                    class="w-full border border-gray-200 dark:border-[#1a3040] dark:bg-[#162830] dark:text-[#dff4ff] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#000b60] dark:focus:ring-[#bcc2ff]">
-                @foreach($clases as $clase)
-                    <option value="{{ $clase->id }}">{{ $clase->nombre }}</option>
-                @endforeach
-            </select>
+        {{-- Fila 1: filtros en cascada (admin) o selector de clase (catedrático) --}}
+        <div class="flex flex-wrap gap-3 items-end mb-3">
+
+            @if($esAdmin)
+                {{-- Sede --}}
+                <div class="flex-1 min-w-[160px]">
+                    <label class="block text-xs font-bold text-[#000b60] dark:text-[#bcc2ff] mb-1.5 uppercase tracking-wide">Sede</label>
+                    <select wire:model.live="sedeId"
+                        class="w-full border border-gray-200 dark:border-[#1a3040] dark:bg-[#162830] dark:text-[#dff4ff] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#000b60]">
+                        <option value="">Todas las sedes</option>
+                        @foreach($sedes as $sede)
+                            <option value="{{ $sede->id }}">{{ $sede->nombre }}</option>
+                        @endforeach
+                    </select>
+                </div>
+
+                {{-- Carrera --}}
+                <div class="flex-1 min-w-[160px]">
+                    <label class="block text-xs font-bold text-[#000b60] dark:text-[#bcc2ff] mb-1.5 uppercase tracking-wide">Carrera</label>
+                    <select wire:model.live="carreraId"
+                        class="w-full border border-gray-200 dark:border-[#1a3040] dark:bg-[#162830] dark:text-[#dff4ff] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#000b60]"
+                        {{ empty($sedes->count()) ? 'disabled' : '' }}>
+                        <option value="">Todas las carreras</option>
+                        @foreach($carreras as $carrera)
+                            <option value="{{ $carrera->id }}">{{ $carrera->nombre }}</option>
+                        @endforeach
+                    </select>
+                </div>
+            @endif
+
+            {{-- Clase --}}
+            <div class="flex-1 min-w-[180px]">
+                <label class="block text-xs font-bold text-[#000b60] dark:text-[#bcc2ff] mb-1.5 uppercase tracking-wide">Clase</label>
+                <select wire:model.live="claseId"
+                    class="w-full border border-gray-200 dark:border-[#1a3040] dark:bg-[#162830] dark:text-[#dff4ff] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#000b60]">
+                    @if($esAdmin)<option value="">Todas las clases</option>@endif
+                    @foreach($clases as $clase)
+                        <option value="{{ $clase->id }}">{{ $clase->nombre }}</option>
+                    @endforeach
+                </select>
+            </div>
+
+            @if($claseNombre)
+            <div class="ml-auto text-right hidden lg:block">
+                <p class="text-xs text-gray-400 dark:text-gray-500 font-medium">Clase seleccionada</p>
+                <p class="text-sm font-black text-[#000b60] dark:text-[#bcc2ff]">{{ $claseNombre }}</p>
+                <p class="text-xs text-gray-400 dark:text-gray-500">{{ $totalEstClase }} estudiante(s)</p>
+            </div>
+            @endif
         </div>
 
-        <div>
-            <label class="block text-xs font-bold text-[#000b60] dark:text-[#bcc2ff] mb-1.5 uppercase tracking-wide">Período (sesiones)</label>
-            <div class="flex gap-1.5">
-                @foreach(['5' => 'Últ. 5', '10' => 'Últ. 10', '20' => 'Últ. 20', 'todo' => 'Todo'] as $val => $lbl)
-                    <button wire:click="$set('periodo', '{{ $val }}')"
+        {{-- Fila 2: rango de fechas --}}
+        <div class="flex flex-wrap gap-3 items-end border-t border-gray-100 dark:border-[#1a3040] pt-3">
+            <div>
+                <label class="block text-xs font-bold text-[#000b60] dark:text-[#bcc2ff] mb-1.5 uppercase tracking-wide">Desde</label>
+                <input wire:model.live="fechaDesde" type="date"
+                    class="border border-gray-200 dark:border-[#1a3040] dark:bg-[#162830] dark:text-[#dff4ff] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#000b60]">
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-[#000b60] dark:text-[#bcc2ff] mb-1.5 uppercase tracking-wide">Hasta</label>
+                <input wire:model.live="fechaHasta" type="date"
+                    class="border border-gray-200 dark:border-[#1a3040] dark:bg-[#162830] dark:text-[#dff4ff] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#000b60]">
+            </div>
+
+            {{-- Atajos rápidos --}}
+            <div class="flex gap-1.5 flex-wrap">
+                @foreach([
+                    ['label' => 'Este mes',  'desde' => now()->startOfMonth()->format('Y-m-d'),  'hasta' => now()->format('Y-m-d')],
+                    ['label' => '3 meses',   'desde' => now()->subMonths(3)->format('Y-m-d'),     'hasta' => now()->format('Y-m-d')],
+                    ['label' => '6 meses',   'desde' => now()->subMonths(6)->format('Y-m-d'),     'hasta' => now()->format('Y-m-d')],
+                    ['label' => 'Este año',  'desde' => now()->startOfYear()->format('Y-m-d'),    'hasta' => now()->format('Y-m-d')],
+                    ['label' => 'Todo',      'desde' => '',                                        'hasta' => ''],
+                ] as $atajo)
+                @php
+                    $esAtajoActivo = $fechaDesde === $atajo['desde'] && $fechaHasta === $atajo['hasta'];
+                @endphp
+                    <button wire:click="aplicarAtajo('{{ $atajo['desde'] }}', '{{ $atajo['hasta'] }}')"
                             class="px-3 py-2 rounded-lg text-xs font-bold border transition
-                                {{ $periodo === $val
-                                    ? 'bg-[#000b60] dark:bg-[#303c9a] text-white border-[#000b60] dark:border-[#303c9a]'
-                                    : 'bg-white dark:bg-[#162830] text-[#000b60] dark:text-[#bcc2ff] border-gray-200 dark:border-[#1a3040] hover:bg-blue-50 dark:hover:bg-[#1a3040]' }}">
-                        {{ $lbl }}
+                                {{ $esAtajoActivo
+                                    ? 'bg-[#000b60] dark:bg-[#303c9a] text-white border-[#000b60]'
+                                    : 'bg-white dark:bg-[#162830] text-[#000b60] dark:text-[#bcc2ff] border-gray-200 dark:border-[#1a3040] hover:bg-[#e6f6ff] dark:hover:bg-[#1a3040]' }}">
+                        {{ $atajo['label'] }}
                     </button>
                 @endforeach
             </div>
         </div>
 
-        @if($claseNombre)
-        <div class="ml-auto text-right hidden md:block">
-            <p class="text-xs text-gray-400 dark:text-gray-500 font-medium">Clase seleccionada</p>
-            <p class="text-sm font-black text-[#000b60] dark:text-[#bcc2ff]">{{ $claseNombre }}</p>
-            <p class="text-xs text-gray-400 dark:text-gray-500">{{ $totalEstClase }} estudiante(s)</p>
-        </div>
-        @endif
-
     </div>
 
-    {{-- Datos iniciales para las gráficas (leído por JS, no Alpine) --}}
-    <script>window.__dashboardData = {!! json_encode($chartData) !!};</script>
+    {{-- Datos para las gráficas: se re-ejecuta en cada re-render de Livewire --}}
+    <script>
+        window.__dashboardData = {!! json_encode($chartData) !!};
+        // Si los gráficos ya están inicializados (re-render por filtros), actualizarlos
+        if (typeof window.__dashboardRender === 'function') {
+            window.__dashboardRender(window.__dashboardData);
+        }
+    </script>
 
-    {{-- Gráficas (wire:ignore protege los canvas del morphing de Livewire) --}}
+    {{-- Gráficas --}}
     <div wire:ignore>
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
 
@@ -120,7 +178,7 @@
                 <div class="flex items-start justify-between mb-4">
                     <div>
                         <h3 class="font-black text-[#000b60] dark:text-[#bcc2ff] text-base leading-tight">Asistencia por sesión</h3>
-                        <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Presentes vs. ausentes</p>
+                        <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Presentes vs. ausentes en el período</p>
                     </div>
                     <span class="material-symbols-outlined text-[#000b60] dark:text-[#bcc2ff] opacity-20" style="font-size:28px">bar_chart</span>
                 </div>
@@ -162,13 +220,13 @@
             <div class="bg-white dark:bg-[#1e333c] rounded-xl shadow p-5">
                 <div class="flex items-start justify-between mb-4">
                     <div>
-                        <h3 class="font-black text-[#000b60] dark:text-[#bcc2ff] text-base leading-tight">Calificaciones por tipo</h3>
-                        <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Promedio por categoría de evaluación</p>
+                        <h3 class="font-black text-[#000b60] dark:text-[#bcc2ff] text-base leading-tight">Ranking de participación</h3>
+                        <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Top 15 estudiantes más activos en el período</p>
                     </div>
-                    <span class="material-symbols-outlined text-[#000b60] dark:text-[#bcc2ff] opacity-20" style="font-size:28px">grading</span>
+                    <span class="material-symbols-outlined text-[#000b60] dark:text-[#bcc2ff] opacity-20" style="font-size:28px">social_leaderboard</span>
                 </div>
-                <div style="position:relative; height:230px;">
-                    <canvas id="chartCalificaciones"></canvas>
+                <div id="chartRankingWrap" style="position:relative; height:230px; overflow-y:auto;">
+                    <canvas id="chartRanking"></canvas>
                 </div>
             </div>
 
@@ -190,7 +248,7 @@
         @if($sesionesRecientes->isEmpty())
             <div class="py-12 text-center text-gray-400">
                 <span class="material-symbols-outlined" style="font-size:40px">event_note</span>
-                <p class="mt-2 text-sm">No hay sesiones registradas para esta clase</p>
+                <p class="mt-2 text-sm">No hay sesiones en este rango de fechas</p>
             </div>
         @else
         <div class="overflow-x-auto">
@@ -218,9 +276,7 @@
                             <span class="font-bold">{{ $sesion->asistencias_count }}</span>
                             <span class="text-gray-400 text-xs"> / {{ $totalEstClase }}</span>
                         </td>
-                        <td class="px-4 py-3 text-center font-bold {{ $pctColor }}">
-                            {{ $pct }}%
-                        </td>
+                        <td class="px-4 py-3 text-center font-bold {{ $pctColor }}">{{ $pct }}%</td>
                         <td class="px-4 py-3 text-center font-semibold text-gray-700 dark:text-gray-300">
                             {{ $sesion->participaciones_count }}
                         </td>
@@ -239,7 +295,6 @@
         @endif
 
     </div>
-
     @endif
 
 </div>
@@ -255,19 +310,27 @@
         charts = {};
     }
 
-    var isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    function isDarkMode() {
+        return window.matchMedia('(prefers-color-scheme: dark)').matches;
+    }
 
     function renderAll(data) {
+        if (typeof Chart === 'undefined') {
+            setTimeout(function () { renderAll(data); }, 80);
+            return;
+        }
         destroyAll();
-        isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        var dark = isDarkMode();
         Chart.defaults.font.family = "'Inter', sans-serif";
         Chart.defaults.font.size   = 11;
-        Chart.defaults.color       = isDark ? '#94a3b8' : '#6b7280';
+        Chart.defaults.color       = dark ? '#94a3b8' : '#6b7280';
         renderAsistenciaSesion(data.asistenciaSesion);
         renderAsistenciaEstudiante(data.asistenciaEstudiante);
         renderParticipaciones(data.participaciones);
-        renderCalificaciones(data.calificaciones);
+        renderRanking(data.rankingParticipacion);
     }
+
+    function gridColor() { return isDarkMode() ? '#1e2d38' : '#f3f4f6'; }
 
     function renderAsistenciaSesion(d) {
         var ctx = document.getElementById('chartAsistenciaSesion');
@@ -289,7 +352,7 @@
                 },
                 scales: {
                     x: { stacked: true, grid: { display: false } },
-                    y: { stacked: true, beginAtZero: true, ticks: { stepSize: 1 }, grid: { color: isDark ? '#1e2d38' : '#f3f4f6' } }
+                    y: { stacked: true, beginAtZero: true, ticks: { stepSize: 1 }, grid: { color: gridColor() } }
                 }
             }
         });
@@ -309,7 +372,7 @@
                 indexAxis: 'y', responsive: true, maintainAspectRatio: false,
                 plugins: { legend: { display: false }, tooltip: { callbacks: { label: function(c) { return ' ' + c.raw + '%'; } } } },
                 scales: {
-                    x: { beginAtZero: true, max: 100, ticks: { callback: function(v) { return v + '%'; } }, grid: { color: isDark ? '#1e2d38' : '#f3f4f6' } },
+                    x: { beginAtZero: true, max: 100, ticks: { callback: function(v) { return v + '%'; } }, grid: { color: gridColor() } },
                     y: { grid: { display: false } }
                 }
             }
@@ -324,7 +387,7 @@
             data: {
                 labels: d.labels,
                 datasets: [
-                    { type: 'bar',  label: 'Participaciones',   data: d.data,     backgroundColor: 'rgba(0,11,96,0.75)', borderRadius: 4, yAxisID: 'y' },
+                    { type: 'bar',  label: 'Participaciones',    data: d.data,     backgroundColor: 'rgba(0,11,96,0.75)', borderRadius: 4, yAxisID: 'y' },
                     { type: 'line', label: 'Prom. calificación', data: d.promedio, borderColor: '#f97316', backgroundColor: 'rgba(249,115,22,0.08)', pointBackgroundColor: '#f97316', pointRadius: 4, tension: 0.3, fill: true, yAxisID: 'y2' }
                 ]
             },
@@ -332,7 +395,7 @@
                 responsive: true, maintainAspectRatio: false,
                 plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, padding: 14 } } },
                 scales: {
-                    y:  { beginAtZero: true, position: 'left',  ticks: { stepSize: 1 }, grid: { color: isDark ? '#1e2d38' : '#f3f4f6' } },
+                    y:  { beginAtZero: true, position: 'left',  ticks: { stepSize: 1 }, grid: { color: gridColor() } },
                     y2: { beginAtZero: true, position: 'right', max: 10, grid: { drawOnChartArea: false }, ticks: { stepSize: 2 } },
                     x:  { grid: { display: false } }
                 }
@@ -340,36 +403,73 @@
         });
     }
 
-    function renderCalificaciones(d) {
-        var ctx = document.getElementById('chartCalificaciones');
-        if (!ctx) return;
-        var palette = ['#000b60','#1d4ed8','#3b82f6','#60a5fa','#93c5fd','#bfdbfe'];
-        charts.cal = new Chart(ctx, {
+    function renderRanking(d) {
+        var ctx  = document.getElementById('chartRanking');
+        var wrap = document.getElementById('chartRankingWrap');
+        if (!ctx || !wrap) return;
+        var dynH = Math.max(200, d.labels.length * 28);
+        ctx.style.height  = dynH + 'px';
+        wrap.style.height = Math.min(dynH + 10, 230) + 'px';
+        // Gradiente de color según posición
+        var palette = d.labels.map(function(_, i) {
+            var ratio = d.labels.length > 1 ? i / (d.labels.length - 1) : 0;
+            // oro → azul oscuro
+            if (i === 0) return '#f59e0b';
+            if (i === 1) return '#94a3b8';
+            if (i === 2) return '#b45309';
+            return 'rgba(0,11,96,' + (0.75 - ratio * 0.4) + ')';
+        });
+        charts.rank = new Chart(ctx, {
             type: 'bar',
             data: {
                 labels: d.labels,
-                datasets: [{ label: 'Promedio', data: d.data, backgroundColor: d.labels.map(function(_, i) { return palette[i % palette.length]; }), borderRadius: 6, borderSkipped: false }]
+                datasets: [{
+                    label: 'Participaciones',
+                    data: d.data,
+                    backgroundColor: palette,
+                    borderRadius: 4,
+                    borderSkipped: false
+                }]
             },
             options: {
-                responsive: true, maintainAspectRatio: false,
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
                 plugins: {
                     legend: { display: false },
-                    tooltip: { callbacks: { afterLabel: function(c) { return d.totales[c.dataIndex] ? 'Registros: ' + d.totales[c.dataIndex] : ''; } } }
+                    tooltip: {
+                        callbacks: {
+                            label: function(c) { return ' ' + c.raw + ' participaciones'; },
+                            afterLabel: function(c) {
+                                return d.promedios[c.dataIndex] > 0
+                                    ? 'Prom. calificación: ' + d.promedios[c.dataIndex]
+                                    : '';
+                            }
+                        }
+                    }
                 },
                 scales: {
-                    y: { beginAtZero: true, max: 10, ticks: { stepSize: 1 }, grid: { color: isDark ? '#1e2d38' : '#f3f4f6' } },
-                    x: { grid: { display: false } }
+                    x: { beginAtZero: true, ticks: { stepSize: 1 }, grid: { color: gridColor() } },
+                    y: { grid: { display: false } }
                 }
             }
         });
     }
 
-    // Inicializar al cargar la página
-    document.addEventListener('livewire:initialized', function () {
-        if (window.__dashboardData) renderAll(window.__dashboardData);
-    });
+    // Exponer para que el script inline lo llame en cada re-render
+    window.__dashboardRender = renderAll;
 
-    // Actualizar al cambiar filtros
+    // Renderizar al cargar la página por primera vez
+    function tryInitRender() {
+        if (window.__dashboardData) {
+            renderAll(window.__dashboardData);
+        }
+    }
+
+    document.addEventListener('livewire:initialized', tryInitRender);
+    document.addEventListener('livewire:navigated',   tryInitRender);
+
+    // Actualizar al cambiar filtros (evento Livewire dispatch)
     window.addEventListener('dashboard-charts', function (e) {
         renderAll(e.detail.data);
     });

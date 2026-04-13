@@ -17,8 +17,8 @@ return new class extends Migration
             
             // 👇 Campo agregado directamente
             $table->boolean('finalizada')->default(false);
-
             $table->timestamps();
+            $table->softDeletes();
         });
     }
 

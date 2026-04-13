@@ -18,6 +18,8 @@ class Registrar extends Component
     public string $mensaje     = '';
     public string $tipo        = ''; // success | error | warning
     public string $selfieData  = ''; // base64 image from camera
+    public string $latitud     = '';
+    public string $longitud    = '';
 
     public function mount(string $token): void
     {
@@ -58,7 +60,16 @@ class Registrar extends Component
     {
         if ($this->invalido || $this->registrado) return;
 
-        $this->validate(['carnet' => 'required|string']);
+        $this->validate([
+            'carnet'   => 'required|string',
+            'latitud'  => 'required|numeric|between:-90,90',
+            'longitud' => 'required|numeric|between:-180,180',
+        ], [
+            'latitud.required'  => 'La ubicación GPS es obligatoria para registrar asistencia.',
+            'longitud.required' => 'La ubicación GPS es obligatoria para registrar asistencia.',
+            'latitud.between'   => 'Coordenada de latitud inválida.',
+            'longitud.between'  => 'Coordenada de longitud inválida.',
+        ]);
 
         $sesion = Sesion::where('token', $this->token)
             ->where('expiracion', '>', now())
@@ -94,7 +105,7 @@ class Registrar extends Component
 
         $selfiePath = null;
         if ($this->selfieData && str_starts_with($this->selfieData, 'data:image/')) {
-            $base64 = preg_replace('/^data:image\/\w+;base64,/', '', $this->selfieData);
+            $base64     = preg_replace('/^data:image\/\w+;base64,/', '', $this->selfieData);
             $selfiePath = 'selfies/' . uniqid('s_', true) . '.jpg';
             Storage::disk('public')->put($selfiePath, base64_decode($base64));
         }
@@ -103,6 +114,8 @@ class Registrar extends Component
             'sesion_id'     => $sesion->id,
             'estudiante_id' => $estudiante->id,
             'selfie'        => $selfiePath,
+            'latitud'       => (float) $this->latitud,
+            'longitud'      => (float) $this->longitud,
         ]);
 
         $this->registrado = true;

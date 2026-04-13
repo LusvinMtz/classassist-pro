@@ -2,7 +2,9 @@
 
 use Illuminate\Support\Facades\Route;
 
-Route::redirect('/', '/login');
+// ─── Páginas públicas ─────────────────────────────────────────────────────────
+Route::get('/', fn() => view('welcome'))->name('welcome');
+Route::get('/portal', fn() => view('portal.index'))->name('portal.index');
 
 // ─── Módulo Admin (solo administradores) ─────────────────────────────────────
 Route::middleware(['auth', 'verified', 'role.admin'])->prefix('admin')->group(function () {
@@ -10,6 +12,7 @@ Route::middleware(['auth', 'verified', 'role.admin'])->prefix('admin')->group(fu
     Route::view('',                   'admin.index')              ->name('admin.index');
     Route::view('usuarios',           'admin.usuarios')           ->name('admin.usuarios');
     Route::view('tipos-calificacion', 'admin.tipos-calificacion') ->name('admin.tipos-calificacion');
+    Route::view('bitacora',           'admin.bitacora')           ->name('admin.bitacora');
 
 });
 
@@ -19,7 +22,10 @@ Route::middleware(['auth', 'verified', 'role.catedratico'])->group(function () {
     Route::view('dashboard',         'dashboard')              ->name('dashboard');
     Route::view('clases',            'clases.index')           ->name('clases.index');
     Route::view('estudiantes',       'estudiantes.index')      ->name('estudiantes.index');
-    Route::view('sesiones',          'sesiones.index')         ->name('sesiones.index');
+    Route::view('sesiones',          'sesiones.index')           ->name('sesiones.index');
+    Route::get('sesiones/{sesionId}/detalle', fn(int $sesionId) =>
+        view('sesiones.detalle', ['sesionId' => $sesionId])
+    )->name('sesiones.detalle');
     Route::view('asistencia',        'asistencia.index')       ->name('asistencia.index');
     Route::view('ruleta',            'ruleta.index')           ->name('ruleta.index');
     Route::view('grupos',            'grupos.index')           ->name('grupos.index');

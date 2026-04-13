@@ -8,6 +8,8 @@ use App\Models\Actividad;
 use App\Models\ActividadNota;
 use App\Models\Calificacion;
 use App\Models\Clase;
+use App\Models\Grupo;
+use App\Models\Participacion;
 use App\Models\TipoCalificacion;
 use Livewire\Component;
 use Livewire\WithFileUploads;
@@ -38,11 +40,24 @@ class Index extends Component
     // Notas de actividades [actividad_id][estudiante_id] => nota
     public array $notasActs = [];
 
+    // Notas por grupo [actividad_id][grupo_id] => nota
+    public array $notasGrupos = [];
+
     // Import
     public bool  $showImportModal = false;
     public       $archivoImport   = null;
     public string $importMsg      = '';
     public string $importType     = ''; // 'success' | 'error'
+
+    /* ── Modal actividad grupal (disparado desde Grupos) ───────────── */
+    public bool   $showActGrupalModal = false;
+    public string $actGrupalNombre    = '';
+    public string $actGrupalPunteo    = '10';
+    public ?int   $actGrupalSesionId  = null;
+
+    /* ── Configuración de evaluación ───────────────────────────────── */
+    public string $metodoActividades = 'porcentaje'; // 'porcentaje' | 'puntos'
+    public string $maxPuntosExtra    = '5';
 
     /* ── Render ────────────────────────────────────────────────────── */
     public function render()
@@ -59,6 +74,12 @@ class Index extends Component
             ? $tipos->firstWhere('id', (int) $this->tab)
             : null;
 
+        // Grupos de la sesión activa (para vista grupal en actividades)
+        $gruposPorActividad = collect();
+        if ($this->tab === 'actividades' && $clase) {
+            $gruposPorActividad = $this->cargarGruposPorActividad($actividades);
+        }
+
         // Resumen: calcular notas finales
         $resumen = collect();
         if ($this->tab === 'resumen' && $clase) {
@@ -67,7 +88,7 @@ class Index extends Component
 
         return view('livewire.calificaciones.index', compact(
             'clases', 'tipos', 'clase', 'estudiantes',
-            'actividades', 'tipoActivo', 'resumen'
+            'actividades', 'tipoActivo', 'resumen', 'gruposPorActividad'
         ));
     }
 
@@ -75,17 +96,21 @@ class Index extends Component
     public function updatedClaseId(): void
     {
         if ($this->claseId) {
-            Clase::where('usuario_id', auth()->id())->findOrFail($this->claseId);
+            $clase = Clase::where('usuario_id', auth()->id())->findOrFail($this->claseId);
+            $this->metodoActividades = $clase->metodo_actividades ?? 'porcentaje';
+            $this->maxPuntosExtra    = (string) ($clase->max_puntos_extra ?? '5');
         }
-        $this->tab   = 'resumen';
-        $this->notas = [];
+        $this->tab        = 'resumen';
+        $this->notas      = [];
+        $this->notasGrupos = [];
     }
 
     /* ── Cambio de tab ──────────────────────────────────────────────── */
     public function updatedTab(): void
     {
-        $this->notas    = [];
-        $this->notasActs = [];
+        $this->notas      = [];
+        $this->notasActs  = [];
+        $this->notasGrupos = [];
 
         if (!$this->claseId) return;
 
@@ -95,7 +120,27 @@ class Index extends Component
 
         if ($this->tab === 'actividades') {
             $this->loadNotasActividades();
+            $this->loadNotasGrupos();
         }
+    }
+
+    /* ── Guardar configuración de evaluación ────────────────────────── */
+    public function guardarConfigEvaluacion(): void
+    {
+        if (!$this->claseId) return;
+
+        $this->validate([
+            'metodoActividades' => 'required|in:porcentaje,puntos',
+            'maxPuntosExtra'    => 'required|numeric|min:0|max:20',
+        ]);
+
+        $clase = Clase::where('usuario_id', auth()->id())->findOrFail($this->claseId);
+        $clase->update([
+            'metodo_actividades' => $this->metodoActividades,
+            'max_puntos_extra'   => (float) $this->maxPuntosExtra,
+        ]);
+
+        $this->dispatch('notify', message: 'Configuración de evaluación guardada.');
     }
 
     private function loadNotas(int $tipoId): void
@@ -117,6 +162,46 @@ class Index extends Component
                 ->map(fn ($v) => $v !== null ? (string) $v : '')
                 ->toArray();
         }
+    }
+
+    private function loadNotasGrupos(): void
+    {
+        $this->notasGrupos = [];
+        $actividades = Actividad::where('clase_id', $this->claseId)
+            ->whereNotNull('grupo_sesion_id')
+            ->get();
+
+        foreach ($actividades as $act) {
+            // Para actividades grupales tomamos una nota representativa por grupo
+            // (todos los miembros del grupo tienen la misma nota)
+            $grupos = Grupo::where('sesion_id', $act->grupo_sesion_id)
+                ->with('estudiantes:id')
+                ->get();
+
+            foreach ($grupos as $grupo) {
+                $primerMiembro = $grupo->estudiantes->first();
+                if (!$primerMiembro) continue;
+
+                $nota = ActividadNota::where('actividad_id', $act->id)
+                    ->where('estudiante_id', $primerMiembro->id)
+                    ->value('nota');
+
+                $this->notasGrupos[$act->id][$grupo->id] = $nota !== null ? (string) $nota : '';
+            }
+        }
+    }
+
+    private function cargarGruposPorActividad($actividades): \Illuminate\Support\Collection
+    {
+        return $actividades
+            ->filter(fn ($a) => $a->grupo_sesion_id !== null)
+            ->mapWithKeys(function ($act) {
+                $grupos = Grupo::where('sesion_id', $act->grupo_sesion_id)
+                    ->with('estudiantes:id,nombre')
+                    ->orderBy('id')
+                    ->get();
+                return [$act->id => $grupos];
+            });
     }
 
     /* ── Guardar notas tipo fijo ────────────────────────────────────── */
@@ -157,7 +242,7 @@ class Index extends Component
     public function abrirNuevaActividad(): void
     {
         $this->actNombre = '';
-        $this->actPunteo = '100';
+        $this->actPunteo = $this->metodoActividades === 'puntos' ? '5' : '100';
         $this->actEditId = null;
         $this->showActModal = true;
     }
@@ -206,18 +291,20 @@ class Index extends Component
     {
         Actividad::where('clase_id', $this->claseId)->findOrFail($id)->delete();
         $this->loadNotasActividades();
+        $this->loadNotasGrupos();
     }
 
-    /* ── Guardar notas de actividades ──────────────────────────────── */
+    /* ── Guardar notas de actividades individuales ─────────────────── */
     public function guardarNotasActividades(): void
     {
         if (!$this->claseId) return;
 
+        $clase       = Clase::findOrFail($this->claseId);
         $actividades = Actividad::where('clase_id', $this->claseId)->get()->keyBy('id');
 
         foreach ($this->notasActs as $actId => $porEstudiante) {
             $act = $actividades[$actId] ?? null;
-            if (!$act) continue;
+            if (!$act || $act->esGrupal()) continue; // las grupales se guardan aparte
 
             foreach ($porEstudiante as $estudianteId => $valor) {
                 $valor = trim((string) $valor);
@@ -228,10 +315,21 @@ class Index extends Component
                     continue;
                 }
 
-                $nota = max(0, min((float) $valor, (float) $act->punteo_max));
+                $notaInput = (float) $valor;
+
+                // Validación estricta para método por puntos
+                if ($clase->metodo_actividades === 'puntos' && $notaInput > (float) $act->punteo_max) {
+                    $this->addError(
+                        "notaActs_{$actId}_{$estudianteId}",
+                        "Máximo: {$act->punteo_max} pts"
+                    );
+                    continue;
+                }
+
+                $nota = max(0, min($notaInput, (float) $act->punteo_max));
                 ActividadNota::updateOrCreate(
                     ['actividad_id' => $actId, 'estudiante_id' => $estudianteId],
-                    ['nota' => round($nota, 2)]
+                    ['nota' => round($nota, 2), 'grupo_id' => null]
                 );
             }
         }
@@ -239,10 +337,103 @@ class Index extends Component
         $this->dispatch('notify', message: 'Notas de actividades guardadas.');
     }
 
+    /* ── Guardar notas grupales ─────────────────────────────────────── */
+    public function guardarNotasGrupos(): void
+    {
+        if (!$this->claseId) return;
+
+        $clase       = Clase::findOrFail($this->claseId);
+        $actividades = Actividad::where('clase_id', $this->claseId)
+            ->whereNotNull('grupo_sesion_id')
+            ->get()
+            ->keyBy('id');
+
+        foreach ($this->notasGrupos as $actId => $porGrupo) {
+            $act = $actividades[$actId] ?? null;
+            if (!$act) continue;
+
+            foreach ($porGrupo as $grupoId => $valor) {
+                $valor = trim((string) $valor);
+
+                $grupo = Grupo::with('estudiantes:id')->find($grupoId);
+                if (!$grupo) continue;
+
+                if ($valor === '') {
+                    // Limpiar notas del grupo en esta actividad
+                    ActividadNota::where('actividad_id', $actId)
+                        ->whereIn('estudiante_id', $grupo->estudiantes->pluck('id'))
+                        ->delete();
+                    continue;
+                }
+
+                $notaInput = (float) $valor;
+
+                if ($clase->metodo_actividades === 'puntos' && $notaInput > (float) $act->punteo_max) {
+                    $this->addError(
+                        "notaGrupo_{$actId}_{$grupoId}",
+                        "Máximo: {$act->punteo_max} pts"
+                    );
+                    continue;
+                }
+
+                $nota = max(0, min($notaInput, (float) $act->punteo_max));
+
+                // Propagar la misma nota a todos los miembros del grupo
+                foreach ($grupo->estudiantes as $estudiante) {
+                    ActividadNota::updateOrCreate(
+                        ['actividad_id' => $actId, 'estudiante_id' => $estudiante->id],
+                        ['nota' => round($nota, 2), 'grupo_id' => $grupoId]
+                    );
+                }
+            }
+        }
+
+        $this->dispatch('notify', message: 'Notas grupales guardadas y propagadas.');
+    }
+
+    /* ── Modal actividad grupal ─────────────────────────────────────── */
+    public function abrirActGrupalModal(int $sesionId): void
+    {
+        $this->actGrupalSesionId = $sesionId;
+        $this->actGrupalNombre   = 'Actividad Grupal';
+        $this->actGrupalPunteo   = $this->metodoActividades === 'puntos' ? '10' : '100';
+        $this->showActGrupalModal = true;
+    }
+
+    public function guardarActividadGrupal(): void
+    {
+        $this->validate([
+            'actGrupalNombre'  => 'required|string|max:100',
+            'actGrupalPunteo'  => 'required|numeric|min:0.01|max:9999',
+            'actGrupalSesionId' => 'required|integer',
+        ], [
+            'actGrupalNombre.required' => 'El nombre es obligatorio.',
+            'actGrupalPunteo.required' => 'El punteo es obligatorio.',
+        ]);
+
+        if (!$this->claseId) return;
+
+        $orden = Actividad::where('clase_id', $this->claseId)->max('orden') + 1;
+
+        Actividad::create([
+            'clase_id'        => $this->claseId,
+            'grupo_sesion_id' => $this->actGrupalSesionId,
+            'nombre'          => $this->actGrupalNombre,
+            'punteo_max'      => $this->actGrupalPunteo,
+            'orden'           => $orden,
+        ]);
+
+        $this->showActGrupalModal = false;
+        $this->actGrupalSesionId  = null;
+        $this->loadNotasActividades();
+        $this->loadNotasGrupos();
+
+        $this->dispatch('notify', message: 'Actividad grupal creada.');
+    }
+
     /* ── Wizard plantilla ───────────────────────────────────────────── */
     public function abrirPlantillaModal(): void
     {
-        // Pre-cargar las actividades ya definidas para la clase
         $definidas = Actividad::where('clase_id', $this->claseId)->orderBy('orden')->get();
 
         if ($definidas->isNotEmpty()) {
@@ -273,7 +464,6 @@ class Index extends Component
 
     public function descargarPlantilla(): mixed
     {
-        // Validar que todos los campos estén completos
         foreach ($this->actsWizard as $i => $act) {
             if (empty(trim($act['nombre'] ?? ''))) {
                 $this->addError("actsWizard.{$i}.nombre", 'El nombre es obligatorio.');
@@ -281,9 +471,8 @@ class Index extends Component
             }
         }
 
-        // Guardar/actualizar actividades en DB
         $clase = Clase::where('usuario_id', auth()->id())->findOrFail($this->claseId);
-        Actividad::where('clase_id', $this->claseId)->delete();
+        Actividad::where('clase_id', $this->claseId)->whereNull('grupo_sesion_id')->delete();
 
         foreach ($this->actsWizard as $i => $actData) {
             Actividad::create([
@@ -355,11 +544,10 @@ class Index extends Component
         }
 
         // Notas de actividades
-        $actividadesData = $actividades;
-        $notasActsPorEst = [];  // [estudiante_id => {suma_notas, suma_max}]
+        $notasActsPorEst = []; // [estudiante_id => {suma, max}]
 
-        if ($actividadesData->isNotEmpty()) {
-            foreach ($actividadesData as $act) {
+        if ($actividades->isNotEmpty()) {
+            foreach ($actividades as $act) {
                 $notas = ActividadNota::where('actividad_id', $act->id)
                     ->whereIn('estudiante_id', $estudianteIds)
                     ->pluck('nota', 'estudiante_id')
@@ -377,32 +565,61 @@ class Index extends Component
             }
         }
 
+        // Puntos extra de participación (ruleta)
+        $participaciones = Participacion::whereHas('sesion', fn ($q) =>
+                $q->where('clase_id', $clase->id)
+            )
+            ->whereIn('estudiante_id', $estudianteIds)
+            ->selectRaw('estudiante_id, SUM(calificacion) as total_extra')
+            ->groupBy('estudiante_id')
+            ->pluck('total_extra', 'estudiante_id')
+            ->toArray();
+
+        $maxExtra = (float) ($clase->max_puntos_extra ?? 5);
+
         // Tipo Actividades
         $tipoActividades = $tipos->first(fn ($t) => $t->esActividades());
 
-        return $estudiantes->map(function ($e) use ($tipos, $notasPorTipo, $notasActsPorEst, $tipoActividades) {
+        return $estudiantes->map(function ($e) use (
+            $tipos, $notasPorTipo, $notasActsPorEst,
+            $tipoActividades, $participaciones, $maxExtra, $clase
+        ) {
             $fila = [
-                'id'     => $e->id,
-                'carnet' => $e->carnet,
-                'nombre' => $e->nombre,
-                'tipos'  => [],
-                'total'  => 0,
+                'id'           => $e->id,
+                'carnet'       => $e->carnet,
+                'nombre'       => $e->nombre,
+                'tipos'        => [],
+                'puntos_extra' => 0,
+                'total'        => 0,
+                'aprobado'     => null, // null = pendiente, true = aprobado, false = reprobado
             ];
+
+            $tieneTodasLasNotas = true;
 
             foreach ($tipos as $tipo) {
                 if ($tipo->esActividades()) {
-                    // Calcular nota de actividades
                     $data = $notasActsPorEst[$e->id] ?? null;
                     if ($data && $data['max'] > 0) {
-                        $pts = round($data['suma'] / $data['max'] * (float) $tipo->punteo_max, 2);
+                        if ($clase->metodo_actividades === 'puntos') {
+                            // Suma directa capada en punteo_max del tipo
+                            $pts = min(
+                                round($data['suma'], 2),
+                                (float) $tipo->punteo_max
+                            );
+                        } else {
+                            // Porcentaje (comportamiento original)
+                            $pts = round($data['suma'] / $data['max'] * (float) $tipo->punteo_max, 2);
+                        }
                     } else {
                         $pts = null;
+                        $tieneTodasLasNotas = false;
                     }
                     $fila['tipos'][$tipo->id] = ['pts' => $pts, 'max' => (float) $tipo->punteo_max];
                 } else {
                     $pts = isset($notasPorTipo[$tipo->id][$e->id])
                         ? (float) $notasPorTipo[$tipo->id][$e->id]
                         : null;
+                    if ($pts === null) $tieneTodasLasNotas = false;
                     $fila['tipos'][$tipo->id] = ['pts' => $pts, 'max' => (float) $tipo->punteo_max];
                 }
 
@@ -411,7 +628,16 @@ class Index extends Component
                 }
             }
 
-            $fila['total'] = round($fila['total'], 2);
+            // Puntos extra (capped)
+            $extra = min((float) ($participaciones[$e->id] ?? 0), $maxExtra);
+            $fila['puntos_extra'] = round($extra, 2);
+            $fila['total']        = round($fila['total'] + $extra, 2);
+
+            // Estado de aprobación
+            if ($tieneTodasLasNotas) {
+                $fila['aprobado'] = $fila['total'] >= 61;
+            }
+
             return $fila;
         });
     }

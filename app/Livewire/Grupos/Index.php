@@ -36,6 +36,7 @@ class Index extends Component
         $ids = $user->clasesImpartidas()->pluck('clase.id');
         return Sesion::whereIn('clase_id', $ids)
             ->where('finalizada', false)
+            ->whereDate('fecha', today())
             ->latest()
             ->first();
     }

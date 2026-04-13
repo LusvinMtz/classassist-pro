@@ -1,4 +1,12 @@
-<aside class="h-screen w-64 fixed left-0 top-0 hidden md:flex flex-col bg-[#e6f6ff] text-[#000b60] dark:bg-[#0d1f2a] dark:text-[#bcc2ff] font-semibold py-6 space-y-4">
+<aside
+    :class="sidebarOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full shadow-none md:translate-x-0 md:shadow-none'"
+    class="h-screen w-64 fixed left-0 top-0 z-30
+           flex flex-col
+           bg-[#e6f6ff] text-[#000b60]
+           dark:bg-[#0d1f2a] dark:text-[#bcc2ff]
+           font-semibold py-6 space-y-4
+           transition-all duration-300 ease-in-out"
+>
 
     <div class="px-4 mb-2">
         <div class="flex items-center gap-3">
@@ -28,18 +36,21 @@
         </div>
 
         <a href="{{ route('admin.index') }}"
+           @click="sidebarOpen = false"
            class="{{ request()->routeIs('admin.index') ? $active : $inactive }}">
             <span class="material-symbols-outlined">admin_panel_settings</span>
             Panel Admin
         </a>
 
         <a href="{{ route('admin.usuarios') }}"
+           @click="sidebarOpen = false"
            class="{{ request()->routeIs('admin.usuarios') ? $active : $inactive }}">
             <span class="material-symbols-outlined">manage_accounts</span>
             Usuarios
         </a>
 
         <a href="{{ route('admin.tipos-calificacion') }}"
+           @click="sidebarOpen = false"
            class="{{ request()->routeIs('admin.tipos-calificacion') ? $active : $inactive }}">
             <span class="material-symbols-outlined">grading</span>
             Tipos Calificación
@@ -53,78 +64,91 @@
 
         {{-- ── Sección académica (admin + catedrático) ─────────────── --}}
         <a href="{{ route('dashboard') }}"
+           @click="sidebarOpen = false"
            class="{{ request()->routeIs('dashboard') ? $active : $inactive }}">
             <span class="material-symbols-outlined">dashboard</span>
             Dashboard
         </a>
 
         <a href="{{ route('clases.index') }}"
+           @click="sidebarOpen = false"
            class="{{ request()->routeIs('clases.*') ? $active : $inactive }}">
             <span class="material-symbols-outlined">school</span>
             Clases
         </a>
 
         <a href="{{ route('estudiantes.index') }}"
+           @click="sidebarOpen = false"
            class="{{ request()->routeIs('estudiantes.*') ? $active : $inactive }}">
             <span class="material-symbols-outlined">groups</span>
             Estudiantes
         </a>
 
         <a href="{{ route('sesiones.index') }}"
+           @click="sidebarOpen = false"
            class="{{ request()->routeIs('sesiones.*') ? $active : $inactive }}">
             <span class="material-symbols-outlined">calendar_month</span>
             Sesiones
         </a>
 
         <a href="{{ route('asistencia.index') }}"
+           @click="sidebarOpen = false"
            class="{{ request()->routeIs('asistencia.*') ? $active : $inactive }}">
             <span class="material-symbols-outlined">how_to_reg</span>
             Asistencia
         </a>
 
         <a href="{{ route('ruleta.index') }}"
+           @click="sidebarOpen = false"
            class="{{ request()->routeIs('ruleta.*') ? $active : $inactive }}">
             <span class="material-symbols-outlined">casino</span>
             Ruleta
         </a>
 
         <a href="{{ route('grupos.index') }}"
+           @click="sidebarOpen = false"
            class="{{ request()->routeIs('grupos.*') ? $active : $inactive }}">
             <span class="material-symbols-outlined">hub</span>
             Grupos
         </a>
 
         <a href="{{ route('temporizador.index') }}"
+           @click="sidebarOpen = false"
            class="{{ request()->routeIs('temporizador.*') ? $active : $inactive }}">
             <span class="material-symbols-outlined">timer</span>
             Temporizador
         </a>
 
         <a href="{{ route('desempeno.index') }}"
+           @click="sidebarOpen = false"
            class="{{ request()->routeIs('desempeno.*') ? $active : $inactive }}">
             <span class="material-symbols-outlined">leaderboard</span>
             Desempeño
         </a>
 
         <a href="{{ route('historial-grupos.index') }}"
+           @click="sidebarOpen = false"
            class="{{ request()->routeIs('historial-grupos.*') ? $active : $inactive }}">
             <span class="material-symbols-outlined">history</span>
             Historial Grupos
         </a>
 
         <a href="{{ route('medidor.index') }}"
+           @click="sidebarOpen = false"
            class="{{ request()->routeIs('medidor.*') ? $active : $inactive }}">
             <span class="material-symbols-outlined">graphic_eq</span>
             Medidor de Ruido
         </a>
 
         <a href="{{ route('exportacion.index') }}"
+           @click="sidebarOpen = false"
            class="{{ request()->routeIs('exportacion.*') ? $active : $inactive }}">
             <span class="material-symbols-outlined">download</span>
             Exportar Excel
         </a>
 
         <a href="{{ route('calificaciones.index') }}"
+           @click="sidebarOpen = false"
            class="{{ request()->routeIs('calificaciones.*') ? $active : $inactive }}">
             <span class="material-symbols-outlined">grading</span>
             Calificaciones
@@ -137,12 +161,14 @@
         </div>
 
         <a href="{{ route('sedes.index') }}"
+           @click="sidebarOpen = false"
            class="{{ request()->routeIs('sedes.*') ? $active : $inactive }}">
             <span class="material-symbols-outlined">location_city</span>
             Sedes
         </a>
 
         <a href="{{ route('asignaciones.index') }}"
+           @click="sidebarOpen = false"
            class="{{ request()->routeIs('asignaciones.*') ? $active : $inactive }}">
             <span class="material-symbols-outlined">assignment_ind</span>
             Asignaciones
