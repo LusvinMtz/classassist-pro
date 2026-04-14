@@ -175,7 +175,7 @@
                 </button>
             </div>
 
-            {{-- ── Sección catedrático: 3 paneles en cascada ─────────────────── --}}
+            {{-- ── Sección catedrático: selección directa de clases ──────────── --}}
             @if($rolId == $rolCatedraticoId)
             <div class="border-t border-gray-100 dark:border-[#2a3d4a] pt-4">
                 <div class="flex items-center justify-between mb-3">
@@ -186,100 +186,52 @@
                     </span>
                 </div>
 
-                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {{-- Buscador --}}
+                <div class="relative mb-2">
+                    <span class="absolute left-2 top-1/2 -translate-y-1/2 material-symbols-outlined text-gray-400" style="font-size:14px">search</span>
+                    <input wire:model.live.debounce.200ms="buscarClase"
+                           type="text" placeholder="Buscar clase..."
+                           class="w-full border border-gray-200 dark:border-[#2a3d4a] dark:bg-[#162a35] dark:text-[#dff4ff] rounded-lg pl-7 pr-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-[#000b60]">
+                </div>
 
-                    {{-- Panel 1: Sedes --}}
-                    <div>
-                        <p class="text-xs font-black uppercase tracking-widest text-[#000b60]/50 dark:text-[#bcc2ff]/50 mb-1.5">
-                            1. Sedes
-                        </p>
-                        <div class="border border-gray-200 dark:border-[#2a3d4a] rounded-lg p-2 space-y-0.5 h-48 overflow-y-auto">
-                            @forelse($sedes as $sede)
-                            <label class="flex items-center gap-2 cursor-pointer hover:bg-[#f3faff] dark:hover:bg-[#1a2f3c] rounded px-2 py-1.5 transition">
-                                <input type="checkbox"
-                                       wire:model.live="sedesSeleccionadas"
-                                       value="{{ $sede->id }}"
-                                       class="w-4 h-4 rounded border-gray-300 text-[#000b60] focus:ring-[#000b60]">
-                                <span class="text-sm font-semibold text-[#000b60] dark:text-[#bcc2ff]">{{ $sede->nombre }}</span>
-                            </label>
-                            @empty
-                            <p class="text-gray-400 text-xs text-center py-4">Sin sedes</p>
-                            @endforelse
+                {{-- Lista de clases --}}
+                <div class="border border-gray-200 dark:border-[#2a3d4a] rounded-lg p-2 space-y-0.5 h-36 overflow-y-auto">
+                    @forelse($clasesDisponibles as $clase)
+                    @php
+                        $seleccionada = in_array((string)$clase->id, $clasesSeleccionadas);
+                        $ocupadaPor   = $clasesOcupadas[$clase->id] ?? null;
+                        $bloqueada    = $ocupadaPor !== null;
+                        $lleno        = count($clasesSeleccionadas) >= 6 && !$seleccionada;
+                        $disabled     = $bloqueada || $lleno;
+                    @endphp
+                    <label class="flex items-center gap-2 rounded px-2 py-1.5 transition
+                                  {{ $disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-[#f3faff] dark:hover:bg-[#1a2f3c]' }}">
+                        <input type="checkbox"
+                               wire:model.live="clasesSeleccionadas"
+                               value="{{ $clase->id }}"
+                               class="w-4 h-4 rounded border-gray-300 text-[#000b60] focus:ring-[#000b60]"
+                               {{ $disabled ? 'disabled' : '' }}>
+                        <div class="flex-1 min-w-0">
+                            <span class="text-xs font-semibold leading-tight block
+                                         {{ $bloqueada ? 'text-gray-400 dark:text-gray-500' : 'text-[#000b60] dark:text-[#bcc2ff]' }}">
+                                {{ $clase->nombre }}
+                            </span>
+                            <span class="text-[10px] font-mono {{ $bloqueada ? 'text-red-400 dark:text-red-500' : 'text-gray-400' }}">
+                                @if($bloqueada)
+                                    Asignada a {{ $ocupadaPor }}
+                                @elseif($clase->codigo)
+                                    Ciclo {{ $clase->ciclo }} · {{ $clase->codigo }}
+                                @endif
+                            </span>
                         </div>
-                    </div>
-
-                    {{-- Panel 2: Carreras (filtradas por sedes) --}}
-                    <div>
-                        <p class="text-xs font-black uppercase tracking-widest text-[#000b60]/50 dark:text-[#bcc2ff]/50 mb-1.5">
-                            2. Carreras
-                        </p>
-                        <div class="border border-gray-200 dark:border-[#2a3d4a] rounded-lg p-2 space-y-0.5 h-48 overflow-y-auto
-                                    {{ empty($sedesSeleccionadas) ? 'bg-gray-50 dark:bg-[#162a35]' : '' }}">
-                            @if(empty($sedesSeleccionadas))
-                                <p class="text-gray-400 text-xs text-center py-8">Selecciona una sede</p>
-                            @else
-                                @forelse($carrerasDisponibles as $carrera)
-                                <label class="flex items-center gap-2 cursor-pointer hover:bg-[#f3faff] dark:hover:bg-[#1a2f3c] rounded px-2 py-1.5 transition">
-                                    <input type="checkbox"
-                                           wire:model.live="carrerasSeleccionadas"
-                                           value="{{ $carrera->id }}"
-                                           class="w-4 h-4 rounded border-gray-300 text-[#000b60] focus:ring-[#000b60]">
-                                    <span class="text-sm font-semibold text-[#000b60] dark:text-[#bcc2ff]">{{ $carrera->nombre }}</span>
-                                </label>
-                                @empty
-                                <p class="text-gray-400 text-xs text-center py-8">Sin carreras en esta sede</p>
-                                @endforelse
-                            @endif
-                        </div>
-                    </div>
-
-                    {{-- Panel 3: Clases (filtradas por carreras + búsqueda) --}}
-                    <div>
-                        <div class="flex items-center justify-between mb-1.5">
-                            <p class="text-xs font-black uppercase tracking-widest text-[#000b60]/50 dark:text-[#bcc2ff]/50">
-                                3. Clases
-                            </p>
-                        </div>
-                        <div class="relative mb-1">
-                            <span class="absolute left-2 top-1/2 -translate-y-1/2 material-symbols-outlined text-gray-400" style="font-size:14px">search</span>
-                            <input wire:model.live.debounce.200ms="buscarClase"
-                                   type="text" placeholder="Buscar clase..."
-                                   class="w-full border border-gray-200 dark:border-[#2a3d4a] dark:bg-[#162a35] dark:text-[#dff4ff] rounded-lg pl-7 pr-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-[#000b60]
-                                          {{ empty($carrerasSeleccionadas) ? 'bg-gray-50' : '' }}"
-                                   {{ empty($carrerasSeleccionadas) ? 'disabled' : '' }}>
-                        </div>
-                        <div class="border border-gray-200 dark:border-[#2a3d4a] rounded-lg p-2 space-y-0.5 h-40 overflow-y-auto
-                                    {{ empty($carrerasSeleccionadas) ? 'bg-gray-50 dark:bg-[#162a35]' : '' }}">
-                            @if(empty($carrerasSeleccionadas))
-                                <p class="text-gray-400 text-xs text-center py-6">Selecciona una carrera</p>
-                            @else
-                                @forelse($clasesDisponibles as $clase)
-                                @php $seleccionada = in_array((string)$clase->id, $clasesSeleccionadas); $lleno = count($clasesSeleccionadas) >= 6 && !$seleccionada; @endphp
-                                <label class="flex items-center gap-2 rounded px-2 py-1.5 transition
-                                              {{ $lleno ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer hover:bg-[#f3faff] dark:hover:bg-[#1a2f3c]' }}">
-                                    <input type="checkbox"
-                                           wire:model.live="clasesSeleccionadas"
-                                           value="{{ $clase->id }}"
-                                           class="w-4 h-4 rounded border-gray-300 text-[#000b60] focus:ring-[#000b60]"
-                                           {{ $lleno ? 'disabled' : '' }}>
-                                    <div>
-                                        <span class="text-xs font-semibold text-[#000b60] dark:text-[#bcc2ff] leading-tight block">{{ $clase->nombre }}</span>
-                                        @if($clase->codigo)
-                                            <span class="text-[10px] text-gray-400 font-mono">{{ $clase->codigo }}</span>
-                                        @endif
-                                    </div>
-                                </label>
-                                @empty
-                                <p class="text-gray-400 text-xs text-center py-6">Sin resultados</p>
-                                @endforelse
-                            @endif
-                        </div>
-                        @error('clasesSeleccionadas')
-                            <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
-                        @enderror
-                    </div>
-
-                </div>{{-- /grid 3 paneles --}}
+                    </label>
+                    @empty
+                    <p class="text-gray-400 text-xs text-center py-6">Sin resultados</p>
+                    @endforelse
+                </div>
+                @error('clasesSeleccionadas')
+                    <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                @enderror
 
                 {{-- Resumen de clases seleccionadas --}}
                 @if(count($clasesSeleccionadas) > 0)

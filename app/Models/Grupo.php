@@ -11,6 +11,7 @@ class Grupo extends Model
     protected $fillable = [
         'sesion_id',
         'nombre',
+        'descripcion',
     ];
 
     public function sesion()

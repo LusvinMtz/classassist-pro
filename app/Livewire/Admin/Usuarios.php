@@ -2,11 +2,10 @@
 
 namespace App\Livewire\Admin;
 
-use App\Models\Carrera;
 use App\Models\Clase;
 use App\Models\Rol;
-use App\Models\Sede;
 use App\Models\User;
+use Illuminate\Support\Facades\DB;
 use Livewire\Component;
 
 class Usuarios extends Component
@@ -20,11 +19,9 @@ class Usuarios extends Component
     public int    $rolId    = 0;
     public bool   $estado   = true;
 
-    // Filtros en cascada (catedrático)
-    public array  $sedesSeleccionadas    = [];
-    public array  $carrerasSeleccionadas = [];
-    public array  $clasesSeleccionadas   = [];
-    public string $buscarClase           = '';
+    // Selección directa de clases (catedrático)
+    public array  $clasesSeleccionadas = [];
+    public string $buscarClase        = '';
 
     public string $buscar = '';
 
@@ -55,40 +52,23 @@ class Usuarios extends Component
         'clasesSeleccionadas.max' => 'Un catedrático puede impartir máximo 6 clases.',
     ];
 
-    // Cuando cambian sedes: limpiar carreras y clases que ya no apliquen
-    public function updatedSedesSeleccionadas(): void
+    /** Clases ya tomadas por OTROS catedráticos: [clase_id => nombre_catedratico] */
+    private function clasesOcupadas(): array
     {
-        $carrerasValidas = $this->carrerasDisponibles()->pluck('id')->map(fn($v) => (string)$v)->toArray();
-        $this->carrerasSeleccionadas = array_values(array_intersect($this->carrerasSeleccionadas, $carrerasValidas));
+        $query = DB::table('clase_catedratico')
+            ->join('users', 'users.id', '=', 'clase_catedratico.usuario_id')
+            ->select('clase_catedratico.clase_id', 'users.nombre');
 
-        $clasesValidas = $this->clasesDisponibles()->pluck('id')->map(fn($v) => (string)$v)->toArray();
-        $this->clasesSeleccionadas = array_values(array_intersect($this->clasesSeleccionadas, $clasesValidas));
-    }
-
-    // Cuando cambian carreras: limpiar clases que ya no apliquen
-    public function updatedCarrerasSeleccionadas(): void
-    {
-        $clasesValidas = $this->clasesDisponibles()->pluck('id')->map(fn($v) => (string)$v)->toArray();
-        $this->clasesSeleccionadas = array_values(array_intersect($this->clasesSeleccionadas, $clasesValidas));
-    }
-
-    // Todas las carreras disponibles (el filtro de sede no restringe carreras)
-    private function carrerasDisponibles(): \Illuminate\Support\Collection
-    {
-        if (empty($this->sedesSeleccionadas)) {
-            return collect();
+        if ($this->editingId) {
+            $query->where('clase_catedratico.usuario_id', '!=', $this->editingId);
         }
-        return Carrera::orderBy('nombre')->get();
+
+        return $query->pluck('users.nombre', 'clase_catedratico.clase_id')->toArray();
     }
 
-    // Clases disponibles según carreras seleccionadas + búsqueda
     private function clasesDisponibles(): \Illuminate\Support\Collection
     {
-        if (empty($this->carrerasSeleccionadas)) {
-            return collect();
-        }
-        return Clase::whereIn('carrera_id', $this->carrerasSeleccionadas)
-            ->when($this->buscarClase, fn($q) => $q->where('nombre', 'like', '%' . $this->buscarClase . '%'))
+        return Clase::when($this->buscarClase, fn($q) => $q->where('nombre', 'like', '%' . $this->buscarClase . '%'))
             ->orderBy('ciclo')
             ->orderBy('nombre')
             ->get();
@@ -97,7 +77,7 @@ class Usuarios extends Component
     public function openCreate(): void
     {
         $this->reset(['nombre', 'email', 'password', 'estado', 'editingId',
-                      'sedesSeleccionadas', 'carrerasSeleccionadas', 'clasesSeleccionadas', 'buscarClase']);
+                      'clasesSeleccionadas', 'buscarClase']);
         $this->rolId  = Rol::where('nombre', 'catedratico')->value('id') ?? 0;
         $this->estado = true;
         $this->showModal = true;
@@ -105,7 +85,7 @@ class Usuarios extends Component
 
     public function openEdit(int $id): void
     {
-        $user = User::with(['roles', 'clasesImpartidas.carrera.sedes'])->findOrFail($id);
+        $user = User::with(['roles', 'clasesImpartidas'])->findOrFail($id);
         $this->editingId = $id;
         $this->nombre    = $user->nombre;
         $this->email     = $user->email;
@@ -113,11 +93,8 @@ class Usuarios extends Component
         $this->rolId     = $user->roles->first()?->id ?? 0;
         $this->estado    = $user->estado;
 
-        // Reconstruir sedes y carreras a partir de las clases asignadas
-        $this->clasesSeleccionadas   = $user->clasesImpartidas->pluck('id')->map(fn($v) => (string)$v)->toArray();
-        $this->carrerasSeleccionadas = $user->clasesImpartidas->pluck('carrera_id')->filter()->unique()->map(fn($v) => (string)$v)->toArray();
-        $sedeIds = $user->clasesImpartidas->flatMap(fn($c) => $c->carrera?->sedes->pluck('id') ?? collect())->unique()->map(fn($v) => (string)$v)->toArray();
-        $this->sedesSeleccionadas = $sedeIds;
+        $this->clasesSeleccionadas = $user->clasesImpartidas->pluck('id')->map(fn($v) => (string)$v)->toArray();
+        $this->buscarClase = '';
 
         $this->showModal = true;
     }
@@ -128,6 +105,14 @@ class Usuarios extends Component
 
         if (count($this->clasesSeleccionadas) > 6) {
             $this->addError('clasesSeleccionadas', 'Un catedrático puede impartir máximo 6 clases.');
+            return;
+        }
+
+        // Guard: ninguna clase seleccionada puede estar ya asignada a otro catedrático
+        $ocupadas = array_keys($this->clasesOcupadas());
+        $conflicto = array_intersect(array_map('intval', $this->clasesSeleccionadas), $ocupadas);
+        if (!empty($conflicto)) {
+            $this->addError('clasesSeleccionadas', 'Una o más clases ya están asignadas a otro catedrático.');
             return;
         }
 
@@ -156,7 +141,7 @@ class Usuarios extends Component
 
         $this->showModal = false;
         $this->reset(['nombre', 'email', 'password', 'editingId',
-                      'sedesSeleccionadas', 'carrerasSeleccionadas', 'clasesSeleccionadas', 'buscarClase']);
+                      'clasesSeleccionadas', 'buscarClase']);
     }
 
     public function delete(int $id): void
@@ -174,21 +159,19 @@ class Usuarios extends Component
     public function render(): \Illuminate\View\View
     {
         $rolCatedraticoId = Rol::where('nombre', 'catedratico')->value('id');
-
-        $carrerasDisponibles = $this->carrerasDisponibles();
-        $clasesDisponibles   = $this->clasesDisponibles();
+        $clasesDisponibles = $this->clasesDisponibles();
+        $clasesOcupadas    = $this->clasesOcupadas();
 
         return view('livewire.admin.usuarios', [
-            'usuarios'            => User::with(['roles', 'clasesImpartidas'])
+            'usuarios' => User::with(['roles', 'clasesImpartidas'])
                 ->when($this->buscar, fn($q) => $q->where('nombre', 'like', "%{$this->buscar}%")
                     ->orWhere('email', 'like', "%{$this->buscar}%"))
                 ->orderBy('nombre')
                 ->get(),
-            'roles'               => Rol::whereNotIn('nombre', ['estudiante'])->orderBy('nombre')->get(),
-            'sedes'               => Sede::orderBy('nombre')->get(),
-            'carrerasDisponibles' => $carrerasDisponibles,
-            'clasesDisponibles'   => $clasesDisponibles,
-            'rolCatedraticoId'    => $rolCatedraticoId,
+            'roles'            => Rol::whereNotIn('nombre', ['estudiante'])->orderBy('nombre')->get(),
+            'clasesDisponibles' => $clasesDisponibles,
+            'clasesOcupadas'    => $clasesOcupadas,
+            'rolCatedraticoId'  => $rolCatedraticoId,
         ]);
     }
 }

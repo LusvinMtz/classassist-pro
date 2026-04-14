@@ -2,6 +2,7 @@
 
 namespace App\Livewire\PantallaClase;
 
+use App\Models\Actividad;
 use App\Models\Asistencia;
 use App\Models\Clase;
 use App\Models\EstadisticaRuido;
@@ -25,13 +26,24 @@ class Index extends Component
     public bool   $showModal     = false;
 
     // Grupos
-    public string $modo     = 'grupos';
-    public string $fuente   = 'presentes'; // 'presentes' | 'todos'
-    public int    $cantidad = 4;
-    public array  $preview  = [];
-    public bool   $generado = false;
+    public string $modo               = 'grupos';
+    public string $fuente             = 'todos'; // 'presentes' | 'todos'
+    public int    $cantidad           = 4;
+    public string $descripcionGrupos  = '';
+    public array  $preview            = [];
+    public bool   $generado           = false;
 
-    #[Validate('nullable|numeric|min:0|max:10')]
+    // Modal actividad grupal (post-guardar grupos)
+    public bool   $showModalActividad = false;
+    public string $actividadNombre    = '';
+    public float  $actividadPunteo    = 100.0;
+
+    // Actividad de sesión para ruleta (se crea antes de girar)
+    public ?int   $actSesionId            = null;
+    public string $actSesionNombre        = '';
+    public bool   $showModalCrearActSesion = false;
+
+    #[Validate('nullable|numeric|min:0|max:100')]
     public ?string $calificacion = null;
 
     #[Validate('nullable|string|max:500')]
@@ -168,6 +180,8 @@ class Index extends Component
         $this->tab      = 'qr';
         $this->reset(['ganadorId', 'ganadorNombre']);
         $this->resetGenerado();
+        $this->actSesionId     = null;
+        $this->actSesionNombre = '';
     }
 
     /* ─── Sesión ────────────────────────────────────────────────────── */
@@ -300,12 +314,24 @@ class Index extends Component
 
         if (!$this->ganadorId || !$this->sesionId) return;
 
+        $calificacion = $this->calificacion !== null && $this->calificacion !== ''
+            ? (float) $this->calificacion
+            : null;
+
         Participacion::create([
             'sesion_id'     => $this->sesionId,
             'estudiante_id' => $this->ganadorId,
-            'calificacion'  => $this->calificacion !== '' ? $this->calificacion : null,
+            'calificacion'  => $calificacion,
             'comentario'    => $this->comentario ?: null,
         ]);
+
+        // Si hay actividad de sesión activa y se asignó calificación, guardar nota
+        if ($this->actSesionId && $calificacion !== null) {
+            \App\Models\ActividadNota::updateOrCreate(
+                ['actividad_id' => $this->actSesionId, 'estudiante_id' => $this->ganadorId],
+                ['nota' => round(min(100, max(0, $calificacion)), 2), 'grupo_id' => null]
+            );
+        }
 
         $this->cerrarModal();
         $this->reset(['ganadorId', 'ganadorNombre']);
@@ -322,6 +348,45 @@ class Index extends Component
         $this->showModal = false;
         $this->reset(['calificacion', 'comentario']);
         $this->resetValidation();
+    }
+
+    public function abrirModalCrearActSesion(): void
+    {
+        $this->actSesionNombre        = '';
+        $this->showModalCrearActSesion = true;
+    }
+
+    public function crearActSesion(): void
+    {
+        $this->validate([
+            'actSesionNombre' => 'required|string|max:100',
+        ], [
+            'actSesionNombre.required' => 'El nombre de la actividad es obligatorio.',
+        ]);
+
+        if (!$this->claseId) return;
+
+        $clase    = $this->queryClases()->findOrFail($this->claseId);
+        $maxOrden = Actividad::where('clase_id', $clase->id)->max('orden') ?? 0;
+
+        $actividad = Actividad::create([
+            'clase_id'        => $clase->id,
+            'grupo_sesion_id' => null,
+            'nombre'          => $this->actSesionNombre,
+            'punteo_max'      => 100,
+            'orden'           => $maxOrden + 1,
+        ]);
+
+        $this->actSesionId             = $actividad->id;
+        $this->actSesionNombre         = $actividad->nombre;
+        $this->showModalCrearActSesion = false;
+        $this->resetValidation(['actSesionNombre']);
+    }
+
+    public function limpiarActSesion(): void
+    {
+        $this->actSesionId     = null;
+        $this->actSesionNombre = '';
     }
 
     /* ─── Grupos ─────────────────────────────────────────────────────── */
@@ -379,8 +444,9 @@ class Index extends Component
 
         foreach ($this->preview as $g) {
             $grupo = Grupo::create([
-                'sesion_id' => $this->sesionId,
-                'nombre'    => $g['nombre'],
+                'sesion_id'   => $this->sesionId,
+                'nombre'      => $g['nombre'],
+                'descripcion' => $this->descripcionGrupos ?: null,
             ]);
             $grupo->estudiantes()->attach(
                 collect($g['miembros'])->pluck('id')->toArray()
@@ -388,6 +454,41 @@ class Index extends Component
         }
 
         $this->resetGenerado();
+        $this->showModalActividad = true;
+    }
+
+    public function crearActividadGrupal(): void
+    {
+        $this->validate([
+            'actividadNombre' => 'required|string|max:100',
+            'actividadPunteo' => 'required|numeric|min:1|max:9999.99',
+        ], [
+            'actividadNombre.required' => 'El nombre de la actividad es obligatorio.',
+            'actividadPunteo.min'      => 'El punteo máximo debe ser al menos 1.',
+        ]);
+
+        if (!$this->sesionId || !$this->claseId) return;
+
+        $clase     = $this->queryClases()->findOrFail($this->claseId);
+        $maxOrden  = Actividad::where('clase_id', $clase->id)->max('orden') ?? 0;
+
+        Actividad::create([
+            'clase_id'        => $clase->id,
+            'grupo_sesion_id' => $this->sesionId,
+            'nombre'          => $this->actividadNombre,
+            'punteo_max'      => $this->actividadPunteo,
+            'orden'           => $maxOrden + 1,
+        ]);
+
+        $this->omitirActividad();
+    }
+
+    public function omitirActividad(): void
+    {
+        $this->showModalActividad = false;
+        $this->actividadNombre    = '';
+        $this->actividadPunteo    = 100.0;
+        $this->resetValidation(['actividadNombre', 'actividadPunteo']);
     }
 
     public function eliminarGrupos(): void
@@ -404,8 +505,9 @@ class Index extends Component
 
     private function resetGenerado(): void
     {
-        $this->preview  = [];
-        $this->generado = false;
+        $this->preview           = [];
+        $this->generado          = false;
+        $this->descripcionGrupos = '';
     }
 
     private function buildCoOccurrenceMatrix(): array

@@ -128,20 +128,20 @@ Define las categorías de evaluación (parciales, actividades, participación, e
 
 Entidad central del sistema académico.
 
-| Campo              | Tipo                         | Nullable | Descripción                                          |
-|--------------------|------------------------------|----------|------------------------------------------------------|
-| id                 | bigint (PK)                  | No       | Identificador único                                  |
-| nombre             | varchar(100)                 | No       | Nombre del curso                                     |
-| descripcion        | text                         | Sí       | Descripción del curso                                |
-| usuario_id         | bigint (FK)                  | No       | Catedrático principal (→ `users.id`)                 |
-| carrera_id         | bigint (FK)                  | Sí       | Carrera a la que pertenece (→ `carrera.id`)          |
-| codigo             | varchar(20)                  | Sí       | Código del curso                                     |
-| ciclo              | tinyint                      | Sí       | Ciclo académico (1-10); impares = Ene-Jun, pares = Jul-Dic |
-| metodo_actividades | enum('porcentaje','puntos')  | No       | Método de evaluación de actividades                  |
-| max_puntos_extra   | decimal(4,1)                 | No       | Máximo de puntos extra por participación (default 5) |
-| created_at         | timestamp                    | Sí       |                                                      |
-| updated_at         | timestamp                    | Sí       |                                                      |
-| deleted_at         | timestamp                    | Sí       | Soft delete                                          |
+| Campo                   | Tipo                         | Nullable | Descripción                                          |
+|-------------------------|------------------------------|----------|------------------------------------------------------|
+| id                      | bigint (PK)                  | No       | Identificador único                                  |
+| nombre                  | varchar(100)                 | No       | Nombre del curso                                     |
+| descripcion             | text                         | Sí       | Descripción del curso                                |
+| usuario_id              | bigint (FK)                  | No       | Catedrático principal (→ `users.id`)                 |
+| carrera_id              | bigint (FK)                  | Sí       | Carrera a la que pertenece (→ `carrera.id`)          |
+| codigo                  | varchar(20)                  | Sí       | Código del curso                                     |
+| ciclo                   | tinyint                      | Sí       | Ciclo académico (1-10); impares = Ene-Jun, pares = Jul-Dic |
+| token_inscripcion       | varchar(255)                 | Sí       | Token QR para auto-inscripción de estudiantes        |
+| expiracion_inscripcion  | timestamp                    | Sí       | Vencimiento del QR de inscripción (vigencia 24 h)    |
+| created_at              | timestamp                    | Sí       |                                                      |
+| updated_at              | timestamp                    | Sí       |                                                      |
+| deleted_at              | timestamp                    | Sí       | Soft delete                                          |
 
 **Relaciones:**
 - `catedratico` → N:1 con `users` (catedrático principal)
@@ -173,13 +173,15 @@ Permite asignar múltiples catedráticos a una misma clase.
 | Campo      | Tipo         | Nullable | Descripción                                       |
 |------------|--------------|----------|---------------------------------------------------|
 | id         | bigint (PK)  | No       | Identificador único                               |
-| carnet     | varchar(50)  | No       | Número de carné del estudiante                    |
+| carnet     | varchar(50)  | No       | Carné del estudiante — formato `\d{4}-\d{2}-\d+` (ej. 8590-21-16653) |
 | nombre     | varchar(100) | No       | Nombre completo                                   |
-| correo     | varchar(100) | Sí       | Correo electrónico                                |
+| correo     | varchar(100) | Sí       | Correo institucional — debe terminar en `@miumg.edu.gt` |
 | usuario_id | bigint (FK)  | Sí       | Vinculación con cuenta de usuario (→ `users.id`)  |
 | created_at | timestamp    | Sí       |                                                   |
 | updated_at | timestamp    | Sí       |                                                   |
 | deleted_at | timestamp    | Sí       | Soft delete                                       |
+
+> **Reglas de negocio:** el carné tiene tres partes separadas por guiones: código de carrera (4 dígitos) + año de ingreso (2 dígitos) + número de estudiante (1 o más dígitos). El correo, si se proporciona, debe ser del dominio institucional `@miumg.edu.gt`. Ambas reglas se aplican en el modal individual, la importación Excel y el QR de inscripción.
 
 **Relaciones:**
 - `clases` → N:M con `clase` a través de `clase_estudiante`
@@ -265,13 +267,16 @@ Cada sesión representa una clase impartida en un día determinado.
 
 ### 5.15 `grupo` — Grupos de trabajo
 
-| Campo      | Tipo         | Nullable | Descripción                          |
-|------------|--------------|----------|--------------------------------------|
-| id         | bigint (PK)  | No       | Identificador único                  |
-| sesion_id  | bigint (FK)  | No       | Referencia a `sesion.id`             |
-| nombre     | varchar(50)  | Sí       | Nombre del grupo (ej. "Grupo 1")     |
-| created_at | timestamp    | Sí       |                                      |
-| updated_at | timestamp    | Sí       |                                      |
+| Campo       | Tipo         | Nullable | Descripción                                              |
+|-------------|--------------|----------|----------------------------------------------------------|
+| id          | bigint (PK)  | No       | Identificador único                                      |
+| sesion_id   | bigint (FK)  | No       | Referencia a `sesion.id`                                 |
+| nombre      | varchar(50)  | Sí       | Nombre del grupo (ej. "Grupo 1")                         |
+| descripcion | varchar(255) | Sí       | Descripción de la actividad realizada por el grupo       |
+| created_at  | timestamp    | Sí       |                                                          |
+| updated_at  | timestamp    | Sí       |                                                          |
+
+> El campo `descripcion` es compartido por todos los grupos de una misma sesión (se ingresa una sola vez al guardar) y sirve para documentar qué realizaron en el historial.
 
 **Relaciones:**
 - `sesion` → N:1 con `sesion`
@@ -491,9 +496,7 @@ sede ─── sede_carrera ─── carrera ─── clase
 1. El usuario accede a `Clases`.
 2. Hace clic en **Nueva Clase**.
 3. Ingresa nombre, carrera, código, ciclo académico.
-4. Configura el método de evaluación de actividades (porcentaje o puntos).
-5. Define el máximo de puntos extra por participación.
-6. El sistema crea la clase con `usuario_id = auth()->id()`.
+4. El sistema crea la clase con `usuario_id = auth()->id()`.
 
 **Flujo alterno:**
 - Admin ve todas las clases; catedrático solo ve las propias.
@@ -511,8 +514,8 @@ sede ─── sede_carrera ─── carrera ─── clase
 
 **Flujo principal (Catedrático):**
 1. Accede a `Estudiantes`, selecciona una clase.
-2. Agrega un estudiante individualmente (carné, nombre, correo) o importa desde Excel.
-3. El sistema valida duplicado de carné/correo dentro de la clase.
+2. Agrega un estudiante individualmente (carné, nombre, correo), importa desde Excel, o genera un **QR de inscripción** para que los estudiantes se registren solos.
+3. El sistema valida formato de carné (`\d{4}-\d{2}-\d+`) y dominio de correo (`@miumg.edu.gt`), además de duplicados dentro de la clase.
 4. El estudiante queda inscrito en la clase (`clase_estudiante`).
 
 **Flujo principal (Administrador):**
@@ -522,8 +525,9 @@ sede ─── sede_carrera ─── carrera ─── clase
 4. Puede editar o eliminar estudiantes globalmente.
 
 **Flujo alterno:**
-- Importación Excel: formato con columnas No., Carné, Estudiante, Correo Electrónico.
+- Importación Excel: formato con columnas Carné, Estudiante, Correo Electrónico. Carné debe tener formato `0000-00-0000` y correo debe ser `@miumg.edu.gt`.
 - Errores de importación se muestran fila por fila.
+- QR de inscripción: genera un token de 40 caracteres con vigencia de 24 horas almacenado en `clase.token_inscripcion`. Ver CU-14.
 
 **Resultado esperado:** Estudiantes registrados e inscritos correctamente.
 
@@ -616,24 +620,27 @@ sede ─── sede_carrera ─── carrera ─── clase
 ### CU-10: Generar grupos de trabajo
 
 **Actor:** Catedrático  
-**Descripción:** Generar grupos aleatorios optimizados para minimizar repetición de pares.
+**Descripción:** Generar grupos aleatorios optimizados para minimizar repetición de pares, opcionalmente ligados a una actividad grupal.
 
 **Flujo principal:**
 1. El catedrático accede a `Pantalla de Clase > Grupos`.
 2. Elige el modo: por número de grupos o por tamaño de grupo.
-3. Ingresa la cantidad deseada.
+3. Ingresa la cantidad deseada y una **descripción opcional** de la actividad (se almacena en `grupo.descripcion` y aparece en el historial).
 4. Hace clic en **Generar** → el algoritmo:
    - Construye una matriz de co-ocurrencia (cuántas veces han estado juntos cada par).
    - Ejecuta 30 intentos aleatorios con búsqueda local.
    - Selecciona la distribución con menor puntuación de repetición.
 5. Revisa el preview de grupos generados.
 6. Hace clic en **Guardar** para confirmar.
+7. Al guardar, aparece un modal **¿Crear actividad grupal?** donde puede:
+   - Ingresar nombre y punteo máximo de la actividad → se crea en `actividad` con `grupo_sesion_id = sesion.id`.
+   - Hacer clic en **Omitir** para crear la actividad más tarde desde el panel de Desempeño.
 
 **Flujo alterno:**
 - Regenerar: repite el proceso con nueva aleatoriedad.
 - Sesión no operativa → bloqueado.
 
-**Resultado esperado:** Grupos guardados en `grupo` y `grupo_estudiante`, disponibles para actividades grupales.
+**Resultado esperado:** Grupos guardados en `grupo` y `grupo_estudiante`, con descripción visible en el historial. Si se creó actividad, queda disponible para calificar en Desempeño.
 
 ---
 
@@ -653,11 +660,14 @@ sede ─── sede_carrera ─── carrera ─── clase
 2. Ingresa notas por estudiante o por grupo (se propagan automáticamente a todos los miembros).
 3. Puede importar notas desde Excel o descargar plantilla.
 
-**Configuración de evaluación:**
-- Método: porcentaje o puntos acumulados.
-- Máximo de puntos extra por participación de ruleta.
+**Cálculo de actividades:**
+- Todas las actividades se califican sobre 100 puntos.
+- La nota del tipo "Actividades" = promedio de todas las actividades × punteo del tipo.
+- Puntos extra por participación de ruleta: hasta 5 pts adicionales al total.
 
 **Resultado esperado:** Calificaciones guardadas; el resumen muestra la nota final calculada y estado (aprobado/reprobado ≥61).
+
+> **Importante:** Una vez guardada una nota por el catedrático, solo el administrador puede modificarla.
 
 ---
 
@@ -698,7 +708,44 @@ sede ─── sede_carrera ─── carrera ─── clase
 
 ---
 
-### CU-14: Analizar desempeño de estudiantes
+### CU-14: Inscripción de estudiantes por QR
+
+**Actor:** Catedrático (genera QR) / Estudiante (escanea)
+**Descripción:** El catedrático genera un QR de inscripción para que los estudiantes se den de alta en la clase sin intervención del catedrático.
+
+**Flujo principal:**
+1. El catedrático selecciona una clase en `Estudiantes`.
+2. Hace clic en **QR Inscripción** → el sistema genera un token de 40 caracteres con vencimiento de 24 horas, almacenado en `clase.token_inscripcion` / `clase.expiracion_inscripcion`.
+3. Se muestra el código QR en SVG y la URL directa `/inscribirse/{token}`.
+4. El estudiante escanea el QR o visita la URL desde cualquier dispositivo.
+5. En el formulario público completa:
+   - **Carné** — formato `\d{4}-\d{2}-\d+` (ej. 8590-21-16653)
+   - **Nombre completo**
+   - **Correo institucional** — debe terminar en `@miumg.edu.gt`
+6. El sistema valida el formato de carné, el dominio del correo, que el token no haya expirado y que el estudiante no esté ya inscrito en la clase.
+7. Se ejecuta `Estudiante::firstOrCreate` y `clase->estudiantes()->syncWithoutDetaching`.
+8. Confirmación de inscripción exitosa en pantalla.
+
+**Flujo alterno:**
+- Token expirado → pantalla de error "QR ha expirado, solicita uno nuevo".
+- Token inválido → pantalla de error "QR no válido".
+- Carné con formato incorrecto → error de validación con mensaje descriptivo.
+- Correo fuera del dominio `@miumg.edu.gt` → error "debe ser correo institucional".
+- Carné ya inscrito en la clase → error "ya estás registrado".
+- Correo ya inscrito en la clase → error en campo correo.
+- El catedrático puede **Regenerar** el QR en cualquier momento (invalida el token anterior).
+
+**Notas técnicas:**
+- Ruta pública (sin autenticación): `GET /inscribirse/{token}`
+- Componente Livewire: `App\Livewire\Estudiantes\Inscribirse`
+- Vista pública: `resources/views/estudiantes/inscribirse.blade.php`
+- El QR de inscripción es independiente del QR de asistencia (tabla `clase` vs tabla `sesion`).
+
+**Resultado esperado:** Estudiante inscrito en la clase sin que el catedrático tenga que agregar el registro manualmente.
+
+---
+
+### CU-15: Analizar desempeño de estudiantes
 
 **Actor:** Administrador / Catedrático  
 **Descripción:** Visualizar un ranking de desempeño basado en asistencia, participación y notas.
@@ -772,14 +819,20 @@ sede ─── sede_carrera ─── carrera ─── clase
 ### CU-18: Ver historial de grupos
 
 **Actor:** Administrador / Catedrático  
-**Descripción:** Revisar los grupos generados en sesiones anteriores.
+**Descripción:** Revisar los grupos generados en sesiones anteriores, con descripción de la actividad realizada.
 
 **Flujo principal:**
 1. Accede a `Historial Grupos`, selecciona una clase.
+   - **Catedrático:** el selector muestra únicamente sus clases (propietario `usuario_id` + pivot `clase_catedratico`).
+   - **Administrador:** el selector muestra todas las clases del sistema.
 2. El sistema muestra todas las sesiones que tuvieron grupos, ordenadas por fecha descendente.
-3. Para cada sesión, visualiza los grupos con sus integrantes.
+3. Para cada sesión visualiza:
+   - Fecha y estado (hoy / finalizada).
+   - Número de grupos y total de estudiantes.
+   - **Descripción de la actividad** (si fue ingresada al guardar los grupos).
+   - Cada grupo con su lista de integrantes.
 
-**Resultado esperado:** Historial completo de distribuciones de grupos para análisis de co-ocurrencia.
+**Resultado esperado:** Historial completo de distribuciones de grupos con descripción de la actividad, accesible según el rol del usuario.
 
 ---
 
@@ -802,3 +855,30 @@ sede ─── sede_carrera ─── carrera ─── clase
 - Ya registrado → mensaje de confirmación sin duplicar registro.
 
 **Resultado esperado:** Asistencia registrada con evidencia (selfie + GPS) vinculada a su carné.
+
+---
+
+### CU-20: Consultar portal del estudiante
+
+**Actor:** Estudiante (sin cuenta de sistema)  
+**Descripción:** El estudiante consulta su información académica (asistencia, calificaciones, actividades y grupos) ingresando solo su carné y correo.
+
+**Flujo principal:**
+1. El estudiante accede a `/portal-estudiante` (página pública).
+2. Ingresa su **carné** y **correo electrónico**.
+3. El sistema busca al estudiante y carga todos sus datos.
+4. Para cada clase en la que está inscrito visualiza:
+   - **Asistencia:** barra de progreso con cantidad de sesiones asistidas y porcentaje.
+   - **Calificaciones:** notas por tipo de calificación.
+   - **Actividades:** lista de actividades con su nota obtenida y punteo máximo; las actividades grupales están marcadas con etiqueta "Grupal".
+   - **Grupos:** grupos en los que participó, con la descripción de la actividad realizada y la fecha de la sesión.
+5. Puede hacer clic en **Nueva búsqueda** para limpiar el formulario.
+
+**Restricciones:**
+- Sin entregables ni subida de archivos (solo consulta).
+- No requiere autenticación ni cuenta en el sistema.
+
+**Flujo alterno:**
+- Carné o correo incorrecto → mensaje de error, no se muestra información.
+
+**Resultado esperado:** El estudiante visualiza su situación académica actualizada sin necesidad de credenciales de acceso al sistema.

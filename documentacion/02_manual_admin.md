@@ -28,7 +28,7 @@ El acceso administrativo se gestiona a través del módulo **Panel Admin**, acce
 | Sesiones (global)        | Ver y filtrar sesiones de todos los catedráticos              |
 | Desempeño (global)       | Rankings y estadísticas filtradas por sede/carrera/clase      |
 | Calificaciones           | Acceso a calificaciones de clases propias                     |
-| Historial de Grupos      | Consultar grupos generados por sesión                         |
+| Historial de Grupos      | Consultar grupos generados por sesión — el admin ve **todas** las clases del sistema |
 | Exportar Excel           | Exportar datos de asistencia de clases propias                |
 
 ---
@@ -68,9 +68,10 @@ _[Insertar imagen aquí]_
    - **Rol:** selecciona `admin` o `catedratico`
    - **Estado:** activo o inactivo
 4. Si el rol es `catedratico`, aparecerá una sección para asignar clases:
-   - Filtra por Sede, luego por Carrera.
+   - Usa el buscador para filtrar por nombre de clase.
    - Selecciona las clases que impartirá (máximo 6 clases).
-5. Haz clic en **Guardar**.
+   - Las clases seleccionadas aparecen como etiquetas al pie del panel.
+5. Haz clic en **Crear usuario**.
 
 _[Insertar imagen aquí]_
 

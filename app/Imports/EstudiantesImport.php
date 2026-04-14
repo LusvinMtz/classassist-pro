@@ -36,6 +36,12 @@ class EstudiantesImport implements ToCollection, WithHeadingRow, SkipsEmptyRows
                 continue;
             }
 
+            // Validar formato de carné: 0000-00-0000
+            if (!preg_match('/^\d{4}-\d{2}-\d+$/', $carnet)) {
+                $this->errores[] = "Fila {$this->fila}: el carné '{$carnet}' no tiene el formato correcto (ej. 8590-21-16653).";
+                continue;
+            }
+
             if (!$nombre) {
                 $this->errores[] = "Fila {$this->fila}: nombre vacío.";
                 continue;
@@ -44,6 +50,12 @@ class EstudiantesImport implements ToCollection, WithHeadingRow, SkipsEmptyRows
             // Validar formato de correo
             if ($correo && !filter_var($correo, FILTER_VALIDATE_EMAIL)) {
                 $this->errores[] = "Fila {$this->fila}: el correo '{$correo}' no es válido.";
+                continue;
+            }
+
+            // Validar dominio institucional
+            if ($correo && !str_ends_with(strtolower($correo), '@miumg.edu.gt')) {
+                $this->errores[] = "Fila {$this->fila}: el correo '{$correo}' debe ser institucional (@miumg.edu.gt).";
                 continue;
             }
 

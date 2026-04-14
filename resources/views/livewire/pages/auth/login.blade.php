@@ -78,21 +78,6 @@ new #[Layout('layouts.guest')] class extends Component
             <x-input-error :messages="$errors->get('form.password')" class="mt-1" />
         </div>
 
-        <!-- Remember Me -->
-        <div class="flex items-center gap-2">
-            <input
-                wire:model="form.remember"
-                id="remember"
-                type="checkbox"
-                name="remember"
-                class="w-4 h-4 rounded border-gray-300"
-                style="accent-color: #1a237e;"
-            />
-            <label for="remember" class="text-sm" style="color: var(--guest-muted);">
-                Mantenerme conectado
-            </label>
-        </div>
-
         <!-- Submit -->
         <button
             type="submit"

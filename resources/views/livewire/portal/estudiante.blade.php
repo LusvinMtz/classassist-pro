@@ -40,7 +40,7 @@
                 class="w-full rounded-xl py-3 text-sm font-bold tracking-wide text-white transition hover:opacity-90 active:scale-95"
                 style="background-color: var(--guest-logo-bg);">
                 <span wire:loading.remove wire:target="buscar">Consultar mi información</span>
-                <span wire:loading wire:target="buscar">Buscando…</span>
+                <span wire:loading wire:target="buscar" style="display:none">Buscando…</span>
             </button>
         </form>
 
@@ -70,11 +70,13 @@
             {{-- Cursos --}}
             @forelse ($estudiante->clases as $clase)
                 @php
-                    $sesiones   = $clase->sesiones;
-                    $totalSes   = $sesiones->count();
-                    $asistidas  = $estudiante->asistencias->filter(fn($a) => $a->sesion?->clase_id === $clase->id)->count();
-                    $pctAsist   = $totalSes > 0 ? round(($asistidas / $totalSes) * 100) : null;
-                    $califs     = $estudiante->calificaciones->where('clase_id', $clase->id);
+                    $sesiones       = $clase->sesiones;
+                    $totalSes       = $sesiones->count();
+                    $asistidas      = $estudiante->asistencias->filter(fn($a) => $a->sesion?->clase_id === $clase->id)->count();
+                    $pctAsist       = $totalSes > 0 ? round(($asistidas / $totalSes) * 100) : null;
+                    $califs         = $estudiante->calificaciones->where('clase_id', $clase->id);
+                    $actividadNotas = $estudiante->actividadNotas->filter(fn($an) => $an->actividad?->clase_id === $clase->id);
+                    $gruposClase    = $estudiante->grupos->filter(fn($g) => $g->sesion?->clase_id === $clase->id);
                 @endphp
 
                 <div class="rounded-2xl border overflow-hidden" style="border-color: var(--guest-input-border);">
@@ -133,6 +135,70 @@
                                             <span class="font-bold" style="color: var(--guest-title);">
                                                 {{ number_format($cal->nota, 2) }}
                                             </span>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            </div>
+                        @endif
+
+                        {{-- Actividades --}}
+                        @if ($actividadNotas->isNotEmpty())
+                            <div>
+                                <p class="text-xs font-semibold tracking-widest uppercase mb-2" style="color: var(--guest-subtitle);">Actividades</p>
+                                <div class="space-y-1.5">
+                                    @foreach ($actividadNotas as $an)
+                                        <div class="flex items-center justify-between rounded-lg px-3 py-2 text-sm"
+                                            style="background-color: var(--guest-input-bg);">
+                                            <div>
+                                                <span style="color: var(--guest-muted);">
+                                                    {{ $an->actividad?->nombre ?? 'Actividad' }}
+                                                </span>
+                                                @if ($an->actividad?->esGrupal())
+                                                    <span class="ml-1 text-xs px-1.5 py-0.5 rounded-full font-semibold"
+                                                          style="background-color: var(--guest-card-bg); color: var(--guest-subtitle);">
+                                                        Grupal
+                                                    </span>
+                                                @endif
+                                            </div>
+                                            <div class="text-right">
+                                                <span class="font-bold" style="color: var(--guest-title);">
+                                                    {{ number_format($an->nota, 2) }}
+                                                </span>
+                                                @if ($an->actividad?->punteo_max)
+                                                    <span class="text-xs" style="color: var(--guest-muted);">
+                                                        / {{ number_format($an->actividad->punteo_max, 0) }}
+                                                    </span>
+                                                @endif
+                                            </div>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            </div>
+                        @endif
+
+                        {{-- Grupos --}}
+                        @if ($gruposClase->isNotEmpty())
+                            <div>
+                                <p class="text-xs font-semibold tracking-widest uppercase mb-2" style="color: var(--guest-subtitle);">Grupos</p>
+                                <div class="space-y-1.5">
+                                    @foreach ($gruposClase as $grupo)
+                                        <div class="rounded-lg px-3 py-2 text-sm"
+                                            style="background-color: var(--guest-input-bg);">
+                                            <div class="flex items-center gap-2">
+                                                <span class="font-semibold" style="color: var(--guest-title);">
+                                                    {{ $grupo->nombre }}
+                                                </span>
+                                                @if ($grupo->sesion)
+                                                    <span class="text-xs" style="color: var(--guest-muted);">
+                                                        · {{ $grupo->sesion->fecha->translatedFormat('d/m/Y') }}
+                                                    </span>
+                                                @endif
+                                            </div>
+                                            @if ($grupo->descripcion)
+                                                <p class="text-xs mt-0.5" style="color: var(--guest-muted);">
+                                                    {{ $grupo->descripcion }}
+                                                </p>
+                                            @endif
                                         </div>
                                     @endforeach
                                 </div>

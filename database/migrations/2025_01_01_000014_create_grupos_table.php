@@ -12,6 +12,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('sesion_id')->constrained('sesion')->cascadeOnDelete();
             $table->string('nombre', 50)->nullable();
+            $table->string('descripcion', 255)->nullable();
             $table->timestamps();
         });
     }

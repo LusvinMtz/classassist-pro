@@ -13,8 +13,8 @@ class EstudiantesPlantillaExport implements FromArray, WithStyles, WithColumnWid
     {
         return [
             ['Carné', 'Estudiante', 'Correo Electrónico'],
-            ['202300001', 'Juan Pérez García', 'juan@uni.edu'],
-            ['202300002', 'María López', 'maria@uni.edu'],
+            ['8590-21-16653', 'Juan Pérez García', 'jperez@miumg.edu.gt'],
+            ['8590-20-15473', 'María López García', 'mlopez@miumg.edu.gt'],
         ];
     }
 

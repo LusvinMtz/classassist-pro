@@ -17,13 +17,13 @@ class Clase extends Model
         'carrera_id',
         'codigo',
         'ciclo',
-        'metodo_actividades',
-        'max_puntos_extra',
+        'token_inscripcion',
+        'expiracion_inscripcion',
     ];
 
     protected $casts = [
-        'ciclo'            => 'integer',
-        'max_puntos_extra' => 'decimal:1',
+        'ciclo'                  => 'integer',
+        'expiracion_inscripcion' => 'datetime',
     ];
 
     /** Semestre según ciclo: impares = Ene-Jun, pares = Jul-Dic */

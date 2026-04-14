@@ -44,6 +44,8 @@ class Estudiante extends Component
             'asistencias.sesion.clase',
             'calificaciones.tipoCalificacion',
             'calificaciones.clase',
+            'actividadNotas.actividad',
+            'grupos.sesion.clase',
         ]);
     }
 

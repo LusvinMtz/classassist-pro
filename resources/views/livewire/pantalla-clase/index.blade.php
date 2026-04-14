@@ -265,6 +265,36 @@
     {{-- TAB: RULETA                                                     --}}
     {{-- ═══════════════════════════════════════════════════════════════ --}}
     @elseif($tab === 'ruleta')
+
+    {{-- Panel actividad de sesión --}}
+    @if($actSesionId)
+    <div class="mb-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl px-5 py-3 flex items-center justify-between gap-3">
+        <div class="flex items-center gap-2 text-green-700 dark:text-green-400">
+            <span class="material-symbols-outlined" style="font-size:20px">task_alt</span>
+            <span class="text-sm font-semibold">Actividad activa:</span>
+            <span class="font-bold">{{ $actSesionNombre }}</span>
+            <span class="text-xs font-normal opacity-70">(sobre 100 pts — cada spin guarda la nota)</span>
+        </div>
+        <button wire:click="limpiarActSesion"
+                class="text-green-600 dark:text-green-400 hover:text-red-500 transition p-1 rounded-lg"
+                title="Quitar actividad de sesión">
+            <span class="material-symbols-outlined" style="font-size:18px">close</span>
+        </button>
+    </div>
+    @else
+    <div class="mb-4 bg-[#e6f6ff] dark:bg-[#0d2535] border border-blue-100 dark:border-[#1a2f3c] rounded-xl px-5 py-3 flex items-center justify-between gap-3">
+        <div class="flex items-center gap-2 text-gray-500 dark:text-gray-400">
+            <span class="material-symbols-outlined text-[#000b60] dark:text-[#bcc2ff]" style="font-size:20px">casino</span>
+            <span class="text-sm">Crea una actividad para que cada estudiante seleccionado reciba su nota sobre 100 pts.</span>
+        </div>
+        <button wire:click="abrirModalCrearActSesion"
+                class="shrink-0 bg-[#000b60] text-white px-4 py-1.5 rounded-lg text-xs font-bold hover:opacity-90 transition flex items-center gap-1">
+            <span class="material-symbols-outlined" style="font-size:14px">add</span>
+            Crear actividad
+        </button>
+    </div>
+    @endif
+
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
         {{-- Display ruleta --}}
@@ -327,7 +357,7 @@
                     <thead class="bg-gray-50 dark:bg-[#162a35]">
                         <tr>
                             <th class="text-left px-4 py-2 font-semibold text-gray-500 dark:text-gray-400 text-xs">Estudiante</th>
-                            <th class="text-center px-4 py-2 font-semibold text-gray-500 dark:text-gray-400 text-xs">Nota</th>
+                            <th class="text-center px-4 py-2 font-semibold text-gray-500 dark:text-gray-400 text-xs">Nota /100</th>
                             <th class="text-left px-4 py-2 font-semibold text-gray-500 dark:text-gray-400 text-xs">Comentario</th>
                         </tr>
                     </thead>
@@ -389,17 +419,6 @@
     @php
         $candidatosGrupo = $fuente === 'todos' ? $todosInscritos : $presentes;
     @endphp
-    @if($candidatosGrupo->isEmpty())
-        <div class="bg-white dark:bg-[#1e333c] rounded-2xl shadow flex flex-col items-center justify-center py-24 text-gray-400 dark:text-gray-500">
-            <span class="material-symbols-outlined" style="font-size:72px">person_off</span>
-            @if($fuente === 'presentes')
-                <p class="mt-4 font-semibold text-gray-500 dark:text-gray-400 text-xl">No hay estudiantes con asistencia registrada</p>
-                <p class="text-sm mt-1">Los estudiantes deben registrar asistencia para participar en grupos</p>
-            @else
-                <p class="mt-4 font-semibold text-gray-500 dark:text-gray-400 text-xl">No hay estudiantes inscritos en esta clase</p>
-            @endif
-        </div>
-    @else
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
         {{-- Panel de configuración --}}
@@ -487,11 +506,25 @@
                     <p class="text-xs text-gray-400 mt-1">{{ $hint }}</p>
                 </div>
 
+                {{-- Descripción --}}
+                <div>
+                    <label class="block text-sm font-semibold mb-1">
+                        Descripción
+                        <span class="text-gray-400 dark:text-gray-500 font-normal text-xs">(opcional)</span>
+                    </label>
+                    <input wire:model="descripcionGrupos"
+                           type="text"
+                           placeholder="¿Qué actividad realizarán los grupos?"
+                           class="w-full border border-gray-200 dark:border-[#2a3d4a] dark:bg-[#162a35] dark:text-[#dff4ff] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#000b60]">
+                </div>
+
                 {{-- Botón generar --}}
                 <button wire:click="generar"
-                        class="w-full bg-[#000b60] text-white py-3 rounded-xl font-bold text-sm hover:opacity-90 transition flex items-center justify-center gap-2">
+                        @if($candidatosGrupo->isEmpty()) disabled @endif
+                        class="w-full py-3 rounded-xl font-bold text-sm transition flex items-center justify-center gap-2
+                               {{ $candidatosGrupo->isEmpty() ? 'bg-gray-200 dark:bg-[#1a2f3c] text-gray-400 cursor-not-allowed' : 'bg-[#000b60] text-white hover:opacity-90' }}">
                     <span class="material-symbols-outlined" style="font-size:18px">shuffle</span>
-                    Generar grupos
+                    {{ $candidatosGrupo->isEmpty() ? 'Sin estudiantes para agrupar' : 'Generar grupos' }}
                 </button>
 
                 <p class="text-xs text-gray-400 flex items-center gap-1">
@@ -656,7 +689,6 @@
         </div>
 
     </div>
-    @endif
 
     {{-- ═══════════════════════════════════════════════════════════════ --}}
     {{-- TAB: TEMPORIZADOR (Alpine.js puro)                              --}}
@@ -990,12 +1022,19 @@
                 <h2 class="text-white text-2xl font-black">{{ $ganadorNombre }}</h2>
             </div>
             <div class="p-6">
+                @if($actSesionId)
+                <div class="mb-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg px-4 py-2 flex items-center gap-2 text-green-700 dark:text-green-400 text-xs">
+                    <span class="material-symbols-outlined" style="font-size:15px">task_alt</span>
+                    La nota se guardará en <strong>{{ $actSesionNombre }}</strong>
+                </div>
+                @endif
                 <p class="text-sm text-gray-500 dark:text-gray-400 text-center mb-5">Registra la participación (opcional)</p>
                 <div class="space-y-4">
                     <div>
-                        <label class="block text-sm font-semibold mb-1">Calificación <span class="text-gray-400 font-normal">(0 – 10)</span></label>
-                        <input wire:model="calificacion" type="number" min="0" max="10" step="0.5"
-                               placeholder="Ej. 8.5"
+                        <label class="block text-sm font-semibold mb-1">Calificación <span class="text-gray-400 font-normal">(0 – 100)</span></label>
+                        <input wire:model="calificacion" type="number" min="0" max="100" step="0.5"
+                               placeholder="Ej. 85"
+                               x-on:input="let v=parseFloat($el.value);if(!isNaN(v)&&v>100)$el.value=100;if(!isNaN(v)&&v<0)$el.value=0;"
                                class="w-full border border-gray-200 dark:border-[#2a3d4a] dark:bg-[#162a35] dark:text-[#dff4ff] rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#000b60] @error('calificacion') border-red-400 @enderror">
                         @error('calificacion') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
                     </div>
@@ -1015,6 +1054,114 @@
                     <button wire:click="guardarParticipacion"
                             class="flex-1 bg-[#000b60] text-white py-2.5 rounded-lg font-semibold hover:opacity-90 transition text-sm">
                         Guardar participación
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    @endif
+
+    {{-- ═══════════════════════════════════════════════════════════════ --}}
+    {{-- MODAL: Crear actividad de sesión (ruleta)                       --}}
+    {{-- ═══════════════════════════════════════════════════════════════ --}}
+    @if($showModalCrearActSesion)
+    <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <div class="bg-white dark:bg-[#1e333c] rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
+            <div class="bg-[#000b60] px-6 py-5">
+                <div class="flex items-center gap-3">
+                    <span class="material-symbols-outlined text-yellow-300" style="font-size:24px">casino</span>
+                    <div>
+                        <p class="text-yellow-300 text-xs font-bold uppercase tracking-widest">Ruleta</p>
+                        <h2 class="text-white text-lg font-black leading-tight">Crear actividad de sesión</h2>
+                    </div>
+                </div>
+            </div>
+            <div class="p-6">
+                <p class="text-sm text-gray-500 dark:text-gray-400 mb-5">
+                    Todos los estudiantes seleccionados en esta sesión acumularán su nota en esta actividad (sobre 100 pts).
+                </p>
+                <div>
+                    <label class="block text-sm font-semibold mb-1">Nombre de la actividad</label>
+                    <input wire:model="actSesionNombre" type="text"
+                           placeholder="Ej. Pregunta oral U3"
+                           wire:keydown.enter="crearActSesion"
+                           class="w-full border border-gray-200 dark:border-[#2a3d4a] dark:bg-[#162a35] dark:text-[#dff4ff] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#000b60] @error('actSesionNombre') border-red-400 @enderror">
+                    @error('actSesionNombre') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
+                </div>
+                <div class="flex gap-3 mt-6">
+                    <button wire:click="$set('showModalCrearActSesion', false)"
+                            class="flex-1 border border-gray-200 dark:border-[#2a3d4a] text-gray-500 dark:text-gray-400 py-2.5 rounded-lg hover:bg-gray-50 dark:hover:bg-[#1a2f3c] font-semibold transition text-sm">
+                        Cancelar
+                    </button>
+                    <button wire:click="crearActSesion"
+                            class="flex-1 bg-[#000b60] text-white py-2.5 rounded-lg font-semibold hover:opacity-90 transition text-sm">
+                        Crear actividad
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    @endif
+
+    {{-- ═══════════════════════════════════════════════════════════════ --}}
+    {{-- MODAL: Crear actividad grupal (post-guardar grupos)             --}}
+    {{-- ═══════════════════════════════════════════════════════════════ --}}
+    @if($showModalActividad)
+    <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <div class="bg-white dark:bg-[#1e333c] rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
+            <div class="bg-[#000b60] px-6 py-5">
+                <div class="flex items-center gap-3">
+                    <span class="material-symbols-outlined text-yellow-300" style="font-size:24px">assignment</span>
+                    <div>
+                        <p class="text-yellow-300 text-xs font-bold uppercase tracking-widest">Grupos guardados</p>
+                        <h2 class="text-white text-lg font-black leading-tight">¿Crear actividad grupal?</h2>
+                    </div>
+                </div>
+            </div>
+            <div class="p-6">
+                <p class="text-sm text-gray-500 dark:text-gray-400 mb-5">
+                    Puedes crear una actividad para calificar a estos grupos o hacerlo más tarde desde el panel de desempeño.
+                </p>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-semibold mb-1">
+                            Nombre de la actividad
+                            <span class="text-red-400">*</span>
+                        </label>
+                        <input wire:model="actividadNombre"
+                               type="text"
+                               placeholder="Ej. Trabajo grupal U2"
+                               class="w-full border border-gray-200 dark:border-[#2a3d4a] dark:bg-[#162a35] dark:text-[#dff4ff] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#000b60] @error('actividadNombre') border-red-400 @enderror">
+                        @error('actividadNombre')
+                            <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                        @enderror
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold mb-1">
+                            Punteo máximo
+                            <span class="text-red-400">*</span>
+                        </label>
+                        <input wire:model="actividadPunteo"
+                               type="number"
+                               min="1"
+                               max="9999.99"
+                               step="0.5"
+                               placeholder="100"
+                               class="w-full border border-gray-200 dark:border-[#2a3d4a] dark:bg-[#162a35] dark:text-[#dff4ff] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#000b60] @error('actividadPunteo') border-red-400 @enderror">
+                        @error('actividadPunteo')
+                            <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                        @enderror
+                    </div>
+                </div>
+                <div class="flex gap-3 mt-6">
+                    <button wire:click="omitirActividad"
+                            class="flex-1 border border-gray-200 dark:border-[#2a3d4a] text-gray-500 dark:text-gray-400 py-2.5 rounded-lg hover:bg-gray-50 dark:hover:bg-[#1a2f3c] font-semibold transition text-sm">
+                        Omitir
+                    </button>
+                    <button wire:click="crearActividadGrupal"
+                            class="flex-1 bg-[#000b60] text-white py-2.5 rounded-lg font-semibold hover:opacity-90 transition text-sm flex items-center justify-center gap-2">
+                        <span class="material-symbols-outlined" style="font-size:18px">add_task</span>
+                        Crear actividad
                     </button>
                 </div>
             </div>

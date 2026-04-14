@@ -5,10 +5,12 @@ namespace App\Livewire\Estudiantes;
 use App\Imports\EstudiantesImport;
 use App\Models\Clase;
 use App\Models\Estudiante;
+use Illuminate\Support\Str;
 use Livewire\Attributes\Validate;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 use Maatwebsite\Excel\Facades\Excel;
+use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
 class Index extends Component
 {
@@ -22,14 +24,19 @@ class Index extends Component
     public bool  $showModal = false;
     public ?int  $editingId = null;
 
-    #[Validate('required|string|max:50')]
+    #[Validate('required|string|max:50|regex:/^\d{4}-\d{2}-\d+$/')]
     public string $carnet = '';
 
     #[Validate('required|string|max:100')]
     public string $nombre = '';
 
-    #[Validate('nullable|email|max:100')]
+    #[Validate('nullable|email|max:100|regex:/@miumg\.edu\.gt$/')]
     public string $correo = '';
+
+    // ── Modal QR inscripción ─────────────────────────────────────────────────
+    public bool   $showQrModal = false;
+    public string $qrSvg       = '';
+    public string $qrUrl       = '';
 
     // ── Modal importar ───────────────────────────────────────────────────────
     public bool  $showImportModal = false;
@@ -113,7 +120,10 @@ class Index extends Component
 
     public function save(): void
     {
-        $this->validate();
+        $this->validate([], [
+            'carnet.regex'  => 'El carné debe tener el formato: 0000-00-0000 (ej. 8590-21-16653).',
+            'correo.regex'  => 'El correo debe ser institucional (@miumg.edu.gt).',
+        ]);
 
         $user = auth()->user();
 
@@ -223,5 +233,56 @@ class Index extends Component
     {
         $this->showImportModal = false;
         $this->reset(['archivo', 'erroresImport', 'importados']);
+    }
+
+    // ── QR de inscripción ────────────────────────────────────────────────────
+
+    public function openQrInscripcion(): void
+    {
+        if (!$this->claseId) return;
+
+        $clase = $this->queryClases()->findOrFail($this->claseId);
+
+        // Generar token si no tiene uno vigente
+        if (!$clase->token_inscripcion || !$clase->expiracion_inscripcion || $clase->expiracion_inscripcion <= now()) {
+            $clase->update([
+                'token_inscripcion'     => Str::random(40),
+                'expiracion_inscripcion' => now()->addHours(24),
+            ]);
+        }
+
+        $this->qrUrl = route('inscribirse', $clase->token_inscripcion);
+        $this->qrSvg = (string) QrCode::format('svg')
+            ->size(260)
+            ->margin(1)
+            ->errorCorrection('H')
+            ->generate($this->qrUrl);
+
+        $this->showQrModal = true;
+    }
+
+    public function regenerarQr(): void
+    {
+        if (!$this->claseId) return;
+
+        $clase = $this->queryClases()->findOrFail($this->claseId);
+        $clase->update([
+            'token_inscripcion'     => Str::random(40),
+            'expiracion_inscripcion' => now()->addHours(24),
+        ]);
+
+        $this->qrUrl = route('inscribirse', $clase->token_inscripcion);
+        $this->qrSvg = (string) QrCode::format('svg')
+            ->size(260)
+            ->margin(1)
+            ->errorCorrection('H')
+            ->generate($this->qrUrl);
+    }
+
+    public function closeQrModal(): void
+    {
+        $this->showQrModal = false;
+        $this->qrSvg       = '';
+        $this->qrUrl       = '';
     }
 }

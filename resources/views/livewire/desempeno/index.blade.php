@@ -316,7 +316,7 @@
                                     $barColor = $pct >= 75 ? 'bg-green-500' : ($pct >= 50 ? 'bg-orange-400' : 'bg-red-400');
                                     $textColor = $pct >= 75 ? 'text-green-600' : ($pct >= 50 ? 'text-orange-500' : 'text-red-500');
                                     $scoreAsist = $pct;
-                                    $scoreCalif = $e['promedio'] !== null ? ($e['promedio'] / 10 * 100) : null;
+                                    $scoreCalif = $e['promedio'] !== null ? (float) $e['promedio'] : null;
                                     $scoreNotas = $e['prom_notas'] !== null ? (float) $e['prom_notas'] : null;
                                     $partes = 0;
                                     $rendimiento = $scoreAsist * 0.5;

@@ -34,60 +34,6 @@
 
     @else
 
-    {{-- ── Panel de configuración de evaluación ──────────────────────────── --}}
-    <div class="bg-white dark:bg-[#1e333c] rounded-xl shadow p-4 mb-4 flex flex-wrap gap-4 items-end">
-
-        <div>
-            <p class="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2 flex items-center gap-1">
-                <span class="material-symbols-outlined" style="font-size:14px">tune</span>
-                Método de evaluación de actividades
-            </p>
-            <div class="flex gap-2">
-                <label class="flex items-center gap-2 cursor-pointer px-3 py-2 rounded-lg border transition
-                              {{ $metodoActividades === 'porcentaje'
-                                 ? 'border-[#000b60] bg-[#000b60]/5 dark:border-[#bcc2ff] dark:bg-[#bcc2ff]/10'
-                                 : 'border-gray-200 dark:border-[#2a3d4a] hover:border-gray-300' }}">
-                    <input type="radio" wire:model.live="metodoActividades" value="porcentaje" class="accent-[#000b60]">
-                    <span class="text-sm font-semibold">Por porcentaje</span>
-                </label>
-                <label class="flex items-center gap-2 cursor-pointer px-3 py-2 rounded-lg border transition
-                              {{ $metodoActividades === 'puntos'
-                                 ? 'border-[#000b60] bg-[#000b60]/5 dark:border-[#bcc2ff] dark:bg-[#bcc2ff]/10'
-                                 : 'border-gray-200 dark:border-[#2a3d4a] hover:border-gray-300' }}">
-                    <input type="radio" wire:model.live="metodoActividades" value="puntos" class="accent-[#000b60]">
-                    <span class="text-sm font-semibold">Por puntos directos</span>
-                </label>
-            </div>
-            <p class="text-xs text-gray-400 mt-1">
-                @if($metodoActividades === 'puntos')
-                    <span class="text-orange-500 font-semibold">Por puntos:</span> cada actividad vale exactamente su punteo; no se puede superar.
-                @else
-                    <span class="text-blue-600 font-semibold">Por porcentaje:</span> la suma se escala al punteo del tipo (comportamiento estándar).
-                @endif
-            </p>
-        </div>
-
-        <div>
-            <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">
-                Máx. puntos extra (ruleta)
-            </label>
-            <div class="flex items-center gap-2">
-                <input wire:model="maxPuntosExtra" type="number" min="0" max="20" step="0.5"
-                       class="w-20 border border-gray-200 dark:border-[#2a3d4a] dark:bg-[#162a35] dark:text-[#dff4ff] rounded-lg px-3 py-2 text-center text-sm focus:outline-none focus:ring-2 focus:ring-[#000b60]">
-                <span class="text-sm text-gray-400">pts</span>
-            </div>
-            @error('maxPuntosExtra') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
-        </div>
-
-        <div class="ml-auto">
-            <button wire:click="guardarConfigEvaluacion"
-                    class="bg-[#000b60] text-white px-4 py-2 rounded-lg text-sm font-bold hover:opacity-90 transition flex items-center gap-2">
-                <span class="material-symbols-outlined" style="font-size:16px">save</span>
-                Guardar configuración
-            </button>
-        </div>
-    </div>
-
     {{-- Pestañas --}}
     <div class="flex flex-wrap gap-1 bg-white dark:bg-[#1e333c] rounded-xl shadow p-1 mb-5 overflow-x-auto">
 
@@ -121,6 +67,7 @@
 
     {{-- TAB: TIPO FIJO --}}
     @if($tipoActivo && !$tipoActivo->esActividades())
+    @php $allLocked = !$esAdmin && $estudiantes->isNotEmpty() && $estudiantes->every(fn($e) => ($notas[$e->id] ?? '') !== ''); @endphp
 
     <div class="bg-white dark:bg-[#1e333c] rounded-xl shadow overflow-hidden">
 
@@ -129,11 +76,13 @@
                 <span class="material-symbols-outlined" style="font-size:18px">edit_note</span>
                 {{ $tipoActivo->nombre }} — Máx: {{ $tipoActivo->punteo_max }} pts
             </span>
+            @if(!$allLocked)
             <button wire:click="guardarNotas"
                     class="bg-[#000b60] text-white px-4 py-2 rounded-lg text-sm font-bold hover:opacity-90 transition flex items-center gap-2">
                 <span class="material-symbols-outlined" style="font-size:16px">save</span>
                 Guardar todas
             </button>
+            @endif
         </div>
 
         @if($estudiantes->isEmpty())
@@ -154,20 +103,29 @@
                 <tbody class="divide-y divide-gray-50 dark:divide-[#1a2f3c]">
                     @foreach($estudiantes as $e)
                     @php
-                        $nota     = $notas[$e->id] ?? '';
-                        $pct      = $nota !== '' && $tipoActivo->punteo_max > 0
+                        $nota      = $notas[$e->id] ?? '';
+                        $locked    = !$esAdmin && $nota !== '';
+                        $pct       = $nota !== '' && $tipoActivo->punteo_max > 0
                             ? round((float)$nota / (float)$tipoActivo->punteo_max * 100) : null;
-                        $pctColor = $pct === null ? 'text-gray-300' : ($pct >= 70 ? 'text-green-600' : ($pct >= 50 ? 'text-orange-500' : 'text-red-500'));
+                        $pctColor  = $pct === null ? 'text-gray-300' : ($pct >= 70 ? 'text-green-600' : ($pct >= 50 ? 'text-orange-500' : 'text-red-500'));
                     @endphp
                     <tr class="hover:bg-[#f3faff] dark:hover:bg-[#1a2f3c]">
                         <td class="px-4 md:px-5 py-3 font-mono text-xs text-[#000b60] dark:text-[#bcc2ff]">{{ $e->carnet }}</td>
                         <td class="px-4 md:px-5 py-3 font-semibold text-sm">{{ $e->nombre }}</td>
                         <td class="px-4 md:px-5 py-3">
-                            <input wire:model="notas.{{ $e->id }}"
-                                   type="number"
-                                   min="0" max="{{ $tipoActivo->punteo_max }}" step="0.01"
-                                   placeholder="—"
-                                   class="w-full border border-gray-200 dark:border-[#2a3d4a] dark:bg-[#162a35] dark:text-[#dff4ff] rounded-lg px-3 py-1.5 text-center text-sm focus:outline-none focus:ring-2 focus:ring-[#000b60]">
+                            @if($locked)
+                                <div class="flex items-center justify-center gap-1.5 text-sm font-bold text-[#000b60] dark:text-[#bcc2ff]">
+                                    {{ $nota }}
+                                    <span class="material-symbols-outlined text-gray-400 dark:text-gray-500" style="font-size:14px" title="Solo el administrador puede modificar esta nota">lock</span>
+                                </div>
+                            @else
+                                <input wire:model.blur="notas.{{ $e->id }}"
+                                       type="number"
+                                       min="0" max="{{ $tipoActivo->punteo_max }}" step="0.01"
+                                       placeholder="—"
+                                       x-on:input="let v=parseFloat($el.value),mx={{ (float)$tipoActivo->punteo_max }};if(!isNaN(v)&&v>mx)$el.value=mx;if(!isNaN(v)&&v<0)$el.value=0;"
+                                       class="w-full border border-gray-200 dark:border-[#2a3d4a] dark:bg-[#162a35] dark:text-[#dff4ff] rounded-lg px-3 py-1.5 text-center text-sm focus:outline-none focus:ring-2 focus:ring-[#000b60]">
+                            @endif
                         </td>
                         <td class="px-4 md:px-5 py-3 text-center font-bold text-sm {{ $pctColor }}">
                             {{ $pct !== null ? $pct . '%' : '—' }}
@@ -178,6 +136,12 @@
             </table>
         </div>
 
+        @if($allLocked)
+        <div class="px-5 py-3 bg-amber-50 dark:bg-amber-900/10 border-t border-amber-100 dark:border-amber-900/20 flex items-center gap-2 text-xs text-amber-700 dark:text-amber-400">
+            <span class="material-symbols-outlined" style="font-size:15px">lock</span>
+            Notas guardadas y bloqueadas. Si hay un error, repórtalo al administrador del sistema para que realice las correcciones.
+        </div>
+        @else
         <div class="px-5 py-3 bg-gray-50 dark:bg-[#162a35] border-t border-gray-100 dark:border-[#1a2f3c] flex justify-end">
             <button wire:click="guardarNotas"
                     class="bg-[#000b60] text-white px-6 py-2.5 rounded-lg text-sm font-bold hover:opacity-90 transition flex items-center gap-2">
@@ -185,6 +149,7 @@
                 Guardar notas
             </button>
         </div>
+        @endif
         @endif
 
     </div>
@@ -201,16 +166,16 @@
                 <span class="font-bold text-[#000b60] dark:text-[#bcc2ff] flex items-center gap-2 text-sm">
                     <span class="material-symbols-outlined" style="font-size:18px">task_alt</span>
                     Actividades — Punteo total: {{ $tipoActivo->punteo_max }} pts
-                    @if($metodoActividades === 'puntos')
-                        <span class="text-xs font-normal bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300 px-2 py-0.5 rounded-full">
-                            Puntos directos
-                        </span>
-                    @else
-                        <span class="text-xs font-normal bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 px-2 py-0.5 rounded-full">
-                            Por porcentaje
-                        </span>
-                    @endif
+                    <span class="text-xs font-normal bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 px-2 py-0.5 rounded-full">
+                        Promedio (sobre 100)
+                    </span>
                 </span>
+                @if($gradoCerrada)
+                <span class="flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400 font-semibold">
+                    <span class="material-symbols-outlined" style="font-size:15px">lock</span>
+                    Ciclo cerrado — no se pueden agregar más actividades
+                </span>
+                @else
                 <div class="flex flex-wrap gap-2">
                     <button wire:click="abrirNuevaActividad"
                             class="border border-[#000b60] dark:border-[#bcc2ff] text-[#000b60] dark:text-[#bcc2ff] px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-blue-50 dark:hover:bg-[#0d2535] transition flex items-center gap-1">
@@ -228,6 +193,7 @@
                         Importar notas
                     </button>
                 </div>
+                @endif
             </div>
 
             @if($actividades->isEmpty())
@@ -243,7 +209,6 @@
                         <tr>
                             <th class="text-left px-5 py-3 font-semibold text-gray-500 dark:text-gray-400 text-xs">#</th>
                             <th class="text-left px-5 py-3 font-semibold text-gray-500 dark:text-gray-400 text-xs">Nombre</th>
-                            <th class="text-center px-5 py-3 font-semibold text-gray-500 dark:text-gray-400 text-xs">Punteo máx.</th>
                             <th class="text-center px-5 py-3 font-semibold text-gray-500 dark:text-gray-400 text-xs">Tipo</th>
                             <th class="w-20"></th>
                         </tr>
@@ -253,9 +218,6 @@
                         <tr class="hover:bg-[#f3faff] dark:hover:bg-[#1a2f3c]">
                             <td class="px-5 py-3 text-gray-400 font-mono text-xs">{{ $act->orden }}</td>
                             <td class="px-5 py-3 font-semibold">{{ $act->nombre }}</td>
-                            <td class="px-5 py-3 text-center font-bold text-[#000b60] dark:text-[#bcc2ff]">
-                                {{ number_format($act->punteo_max, 0) }} pts
-                            </td>
                             <td class="px-5 py-3 text-center">
                                 @if($act->esGrupal())
                                     <span class="text-xs bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 px-2 py-0.5 rounded-full font-semibold">
@@ -292,7 +254,13 @@
         </div>
 
         {{-- Tabla de notas individuales --}}
-        @php $actividadesIndividuales = $actividades->filter(fn($a) => !$a->esGrupal()); @endphp
+        @php
+            $actividadesIndividuales = $actividades->filter(fn($a) => !$a->esGrupal());
+            $allLockedInd = !$esAdmin && $actividadesIndividuales->isNotEmpty() && $estudiantes->isNotEmpty()
+                && $actividadesIndividuales->every(fn($act) =>
+                    $estudiantes->every(fn($e) => ($notasActs[$act->id][$e->id] ?? '') !== '')
+                );
+        @endphp
         @if($actividadesIndividuales->isNotEmpty() && $estudiantes->isNotEmpty())
         <div class="bg-white dark:bg-[#1e333c] rounded-xl shadow overflow-hidden">
 
@@ -301,11 +269,13 @@
                     <span class="material-symbols-outlined" style="font-size:18px">table_chart</span>
                     Notas individuales
                 </span>
+                @if(!$allLockedInd)
                 <button wire:click="guardarNotasActividades"
                         class="bg-[#000b60] text-white px-4 py-1.5 rounded-lg text-xs font-bold hover:opacity-90 transition flex items-center gap-1">
                     <span class="material-symbols-outlined" style="font-size:14px">save</span>
                     Guardar notas
                 </button>
+                @endif
             </div>
 
             <div class="overflow-x-auto">
@@ -317,11 +287,11 @@
                             @foreach($actividadesIndividuales as $act)
                             <th class="text-center px-4 py-3 font-semibold text-gray-500 dark:text-gray-400 text-xs min-w-[130px]">
                                 <p>{{ $act->nombre }}</p>
-                                <p class="font-normal text-gray-400">(Máx: {{ number_format($act->punteo_max, 0) }})</p>
+                                <p class="font-normal text-gray-400">/100</p>
                             </th>
                             @endforeach
                             <th class="text-center px-4 py-3 font-semibold text-gray-500 dark:text-gray-400 text-xs min-w-[110px]">
-                                {{ $metodoActividades === 'puntos' ? 'Total directo' : 'Subtotal' }} / {{ $tipoActivo->punteo_max }} pts
+                                Promedio / {{ $tipoActivo->punteo_max }} pts
                             </th>
                         </tr>
                     </thead>
@@ -334,27 +304,32 @@
                                 if ($n !== '') $sumaEst += (float)$n;
                                 $sumaMax += (float)$act->punteo_max;
                             }
-                            if ($metodoActividades === 'puntos') {
-                                $subtotal = $sumaMax > 0 ? min(round($sumaEst, 2), (float)$tipoActivo->punteo_max) : null;
-                            } else {
-                                $subtotal = $sumaMax > 0 ? round($sumaEst / $sumaMax * (float)$tipoActivo->punteo_max, 2) : null;
-                            }
+                            $subtotal = $sumaMax > 0 ? round($sumaEst / $sumaMax * (float)$tipoActivo->punteo_max, 2) : null;
                             $subColor = $subtotal === null ? 'text-gray-300' : ($subtotal >= $tipoActivo->punteo_max * 0.7 ? 'text-green-600' : ($subtotal >= $tipoActivo->punteo_max * 0.5 ? 'text-orange-500' : 'text-red-500'));
                         @endphp
                         <tr class="hover:bg-[#f3faff] dark:hover:bg-[#1a2f3c]">
                             <td class="px-4 py-2.5 font-mono text-xs text-[#000b60] dark:text-[#bcc2ff] sticky left-0 bg-white dark:bg-[#1e333c]">{{ $e->carnet }}</td>
                             <td class="px-4 py-2.5 font-semibold sticky left-[100px] bg-white dark:bg-[#1e333c] text-sm">{{ $e->nombre }}</td>
                             @foreach($actividadesIndividuales as $act)
+                            @php $notaAct = $notasActs[$act->id][$e->id] ?? ''; $lockedAct = !$esAdmin && $notaAct !== ''; @endphp
                             <td class="px-4 py-2.5">
-                                <input wire:model="notasActs.{{ $act->id }}.{{ $e->id }}"
-                                       type="number"
-                                       min="0" max="{{ $act->punteo_max }}" step="0.01"
-                                       placeholder="—"
-                                       class="w-full border border-gray-200 dark:border-[#2a3d4a] dark:bg-[#162a35] dark:text-[#dff4ff] rounded-lg px-2 py-1 text-center text-xs focus:outline-none focus:ring-2 focus:ring-[#000b60]
-                                              @error('notaActs_'.$act->id.'_'.$e->id) border-red-400 @enderror">
-                                @error('notaActs_'.$act->id.'_'.$e->id)
-                                    <p class="text-red-500 text-[10px] mt-0.5">{{ $message }}</p>
-                                @enderror
+                                @if($lockedAct)
+                                    <div class="flex items-center justify-center gap-1 text-xs font-bold text-[#000b60] dark:text-[#bcc2ff]">
+                                        {{ $notaAct }}
+                                        <span class="material-symbols-outlined text-gray-400 dark:text-gray-500" style="font-size:12px" title="Solo el administrador puede modificar esta nota">lock</span>
+                                    </div>
+                                @else
+                                    <input wire:model.blur="notasActs.{{ $act->id }}.{{ $e->id }}"
+                                           type="number"
+                                           min="0" max="{{ $act->punteo_max }}" step="0.01"
+                                           placeholder="—"
+                                           x-on:input="let v=parseFloat($el.value),mx={{ (float)$act->punteo_max }};if(!isNaN(v)&&v>mx)$el.value=mx;if(!isNaN(v)&&v<0)$el.value=0;"
+                                           class="w-full border border-gray-200 dark:border-[#2a3d4a] dark:bg-[#162a35] dark:text-[#dff4ff] rounded-lg px-2 py-1 text-center text-xs focus:outline-none focus:ring-2 focus:ring-[#000b60]
+                                                  @error('notaActs_'.$act->id.'_'.$e->id) border-red-400 @enderror">
+                                    @error('notaActs_'.$act->id.'_'.$e->id)
+                                        <p class="text-red-500 text-[10px] mt-0.5">{{ $message }}</p>
+                                    @enderror
+                                @endif
                             </td>
                             @endforeach
                             <td class="px-4 py-2.5 text-center font-black text-sm {{ $subColor }}">
@@ -366,15 +341,17 @@
                 </table>
             </div>
 
-            <div class="px-5 py-3 bg-gray-50 dark:bg-[#162a35] border-t border-gray-100 dark:border-[#1a2f3c] text-xs text-gray-400">
-                @if($metodoActividades === 'puntos')
-                    <span class="text-orange-500 font-semibold">Puntos directos:</span>
-                    Total = suma de notas (cap. en {{ $tipoActivo->punteo_max }} pts). No se puede superar el punteo de cada actividad.
-                @else
-                    <span class="text-blue-600 font-semibold">Porcentaje:</span>
-                    Subtotal = (suma notas / suma punteos máx.) × {{ $tipoActivo->punteo_max }} pts
-                @endif
+            @if($allLockedInd)
+            <div class="px-5 py-3 bg-amber-50 dark:bg-amber-900/10 border-t border-amber-100 dark:border-amber-900/20 flex items-center gap-2 text-xs text-amber-700 dark:text-amber-400">
+                <span class="material-symbols-outlined" style="font-size:15px">lock</span>
+                Notas guardadas y bloqueadas. Si hay un error, repórtalo al administrador del sistema para que realice las correcciones.
             </div>
+            @else
+            <div class="px-5 py-3 bg-gray-50 dark:bg-[#162a35] border-t border-gray-100 dark:border-[#1a2f3c] text-xs text-gray-400">
+                <span class="text-blue-600 dark:text-blue-400 font-semibold">Promedio:</span>
+                Cada actividad vale sobre 100. El promedio de todas se escala al punteo del tipo ({{ $tipoActivo->punteo_max }} pts).
+            </div>
+            @endif
         </div>
         @endif
 
@@ -382,7 +359,11 @@
         @php $actividadesGrupales = $actividades->filter(fn($a) => $a->esGrupal()); @endphp
         @if($actividadesGrupales->isNotEmpty())
         @foreach($actividadesGrupales as $act)
-        @php $gruposDeEstaAct = $gruposPorActividad[$act->id] ?? collect(); @endphp
+        @php
+            $gruposDeEstaAct = $gruposPorActividad[$act->id] ?? collect();
+            $allLockedGrp = !$esAdmin && $gruposDeEstaAct->isNotEmpty()
+                && $gruposDeEstaAct->every(fn($g) => ($notasGrupos[$act->id][$g->id] ?? '') !== '');
+        @endphp
 
         <div class="bg-white dark:bg-[#1e333c] rounded-xl shadow overflow-hidden">
 
@@ -392,11 +373,13 @@
                     {{ $act->nombre }}
                     <span class="text-purple-200 font-normal text-xs">(Grupal — Máx: {{ number_format($act->punteo_max, 0) }} pts)</span>
                 </span>
+                @if(!$allLockedGrp)
                 <button wire:click="guardarNotasGrupos"
                         class="bg-white text-purple-700 px-4 py-1.5 rounded-lg text-xs font-bold hover:opacity-90 transition flex items-center gap-1">
                     <span class="material-symbols-outlined" style="font-size:14px">save</span>
                     Guardar y propagar
                 </button>
+                @endif
             </div>
 
             @if($gruposDeEstaAct->isEmpty())
@@ -423,26 +406,42 @@
                             <td class="px-5 py-3 text-sm text-gray-600 dark:text-gray-300">
                                 {{ $grupo->estudiantes->pluck('nombre')->join(', ') }}
                             </td>
+                            @php $notaGrp = $notasGrupos[$act->id][$grupo->id] ?? ''; $lockedGrp = !$esAdmin && $notaGrp !== ''; @endphp
                             <td class="px-5 py-3">
-                                <input wire:model="notasGrupos.{{ $act->id }}.{{ $grupo->id }}"
-                                       type="number"
-                                       min="0" max="{{ $act->punteo_max }}" step="0.01"
-                                       placeholder="—"
-                                       class="w-full border border-gray-200 dark:border-[#2a3d4a] dark:bg-[#162a35] dark:text-[#dff4ff] rounded-lg px-3 py-1.5 text-center text-sm focus:outline-none focus:ring-2 focus:ring-purple-500
-                                              @error('notaGrupo_'.$act->id.'_'.$grupo->id) border-red-400 @enderror">
-                                @error('notaGrupo_'.$act->id.'_'.$grupo->id)
-                                    <p class="text-red-500 text-xs mt-0.5">{{ $message }}</p>
-                                @enderror
+                                @if($lockedGrp)
+                                    <div class="flex items-center justify-center gap-1.5 text-sm font-bold text-[#000b60] dark:text-[#bcc2ff]">
+                                        {{ $notaGrp }}
+                                        <span class="material-symbols-outlined text-gray-400 dark:text-gray-500" style="font-size:14px" title="Solo el administrador puede modificar esta nota">lock</span>
+                                    </div>
+                                @else
+                                    <input wire:model.blur="notasGrupos.{{ $act->id }}.{{ $grupo->id }}"
+                                           type="number"
+                                           min="0" max="{{ $act->punteo_max }}" step="0.01"
+                                           placeholder="—"
+                                           x-on:input="let v=parseFloat($el.value),mx={{ (float)$act->punteo_max }};if(!isNaN(v)&&v>mx)$el.value=mx;if(!isNaN(v)&&v<0)$el.value=0;"
+                                           class="w-full border border-gray-200 dark:border-[#2a3d4a] dark:bg-[#162a35] dark:text-[#dff4ff] rounded-lg px-3 py-1.5 text-center text-sm focus:outline-none focus:ring-2 focus:ring-purple-500
+                                                  @error('notaGrupo_'.$act->id.'_'.$grupo->id) border-red-400 @enderror">
+                                    @error('notaGrupo_'.$act->id.'_'.$grupo->id)
+                                        <p class="text-red-500 text-xs mt-0.5">{{ $message }}</p>
+                                    @enderror
+                                @endif
                             </td>
                         </tr>
                         @endforeach
                     </tbody>
                 </table>
             </div>
+            @if($allLockedGrp)
+            <div class="px-5 py-2 bg-amber-50 dark:bg-amber-900/10 border-t border-amber-100 dark:border-amber-900/20 text-xs text-amber-700 dark:text-amber-400 flex items-center gap-1">
+                <span class="material-symbols-outlined" style="font-size:14px">lock</span>
+                Notas guardadas y bloqueadas. Si hay un error, repórtalo al administrador del sistema para que realice las correcciones.
+            </div>
+            @else
             <div class="px-5 py-2 bg-purple-50 dark:bg-purple-900/10 border-t border-purple-100 dark:border-purple-900/20 text-xs text-purple-600 dark:text-purple-300 flex items-center gap-1">
                 <span class="material-symbols-outlined" style="font-size:14px">info</span>
                 Al guardar, la nota se propagará automáticamente a todos los integrantes de cada grupo.
             </div>
+            @endif
             @endif
         </div>
         @endforeach
@@ -468,8 +467,8 @@
             </span>
             <span class="text-white/60 text-xs">
                 Aprobación: ≥ 61 pts
-                @if((float)$maxPuntosExtra > 0)
-                    · Puntos extra ruleta: hasta {{ $maxPuntosExtra }} pts
+                @if(true)
+                    · Puntos extra ruleta: hasta 5 pts
                 @endif
             </span>
         </div>
@@ -486,7 +485,7 @@
                             <p class="text-gray-400 font-normal">/{{ $tipo->punteo_max }} pts</p>
                         </th>
                         @endforeach
-                        @if((float)$maxPuntosExtra > 0)
+                        @if(true)
                         <th class="text-center px-4 py-3 font-semibold text-amber-600 dark:text-amber-400 text-xs min-w-[100px] bg-amber-50 dark:bg-amber-900/10">
                             <p>Extra</p>
                             <p class="font-normal opacity-70">(ruleta)</p>
@@ -528,7 +527,7 @@
                             @endif
                         </td>
                         @endforeach
-                        @if((float)$maxPuntosExtra > 0)
+                        @if(true)
                         <td class="px-4 py-3 text-center bg-amber-50/50 dark:bg-amber-900/5">
                             @if($extra > 0)
                                 <span class="font-bold text-amber-600 dark:text-amber-400">+{{ number_format($extra, 1) }}</span>
@@ -570,7 +569,7 @@
             <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-green-500 inline-block"></span> ≥ 61 pts — Aprobado</span>
             <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-orange-400 inline-block"></span> 45–60 pts — En riesgo</span>
             <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-red-500 inline-block"></span> &lt; 45 pts — Reprobado</span>
-            @if((float)$maxPuntosExtra > 0)
+            @if(true)
             <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-amber-400 inline-block"></span> Columna Extra = puntos de participación (ruleta)</span>
             @endif
         </div>
@@ -599,18 +598,10 @@
                            class="w-full border border-gray-200 dark:border-[#2a3d4a] dark:bg-[#162a35] dark:text-[#dff4ff] rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#000b60] @error('actNombre') border-red-400 @enderror">
                     @error('actNombre') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
                 </div>
-                <div>
-                    <label class="block text-sm font-semibold mb-1">
-                        Punteo máximo <span class="text-red-500">*</span>
-                        @if($metodoActividades === 'puntos')
-                            <span class="text-orange-500 font-normal text-xs">(valor fijo — no se puede superar)</span>
-                        @endif
-                    </label>
-                    <input wire:model="actPunteo" type="number" min="0.01" max="9999" step="0.01"
-                           placeholder="{{ $metodoActividades === 'puntos' ? 'Ej. 5' : 'Ej. 100' }}"
-                           class="w-full border border-gray-200 dark:border-[#2a3d4a] dark:bg-[#162a35] dark:text-[#dff4ff] rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#000b60] @error('actPunteo') border-red-400 @enderror">
-                    @error('actPunteo') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
-                </div>
+                <p class="text-xs text-gray-400 flex items-center gap-1">
+                    <span class="material-symbols-outlined" style="font-size:14px">info</span>
+                    Todas las actividades se califican sobre 100 puntos.
+                </p>
             </div>
             <div class="flex gap-3 mt-6">
                 <button wire:click="$set('showActModal', false)"
@@ -649,13 +640,10 @@
                            class="w-full border border-gray-200 dark:border-[#2a3d4a] dark:bg-[#162a35] dark:text-[#dff4ff] rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500 @error('actGrupalNombre') border-red-400 @enderror">
                     @error('actGrupalNombre') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
                 </div>
-                <div>
-                    <label class="block text-sm font-semibold mb-1">Punteo máximo <span class="text-red-500">*</span></label>
-                    <input wire:model="actGrupalPunteo" type="number" min="0.01" max="9999" step="0.01"
-                           placeholder="{{ $metodoActividades === 'puntos' ? 'Ej. 10' : 'Ej. 100' }}"
-                           class="w-full border border-gray-200 dark:border-[#2a3d4a] dark:bg-[#162a35] dark:text-[#dff4ff] rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500 @error('actGrupalPunteo') border-red-400 @enderror">
-                    @error('actGrupalPunteo') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
-                </div>
+                <p class="text-xs text-gray-400 flex items-center gap-1">
+                    <span class="material-symbols-outlined" style="font-size:14px">info</span>
+                    La actividad se calificará sobre 100 puntos y propagará la nota a todos los integrantes.
+                </p>
             </div>
             <div class="flex gap-3 mt-6">
                 <button wire:click="$set('showActGrupalModal', false)"
@@ -703,7 +691,7 @@
                             <tr>
                                 <th class="text-center px-3 py-2 font-semibold text-[#000b60] dark:text-[#bcc2ff] text-xs w-10">#</th>
                                 <th class="text-left px-3 py-2 font-semibold text-[#000b60] dark:text-[#bcc2ff] text-xs">Nombre de la actividad</th>
-                                <th class="text-center px-3 py-2 font-semibold text-[#000b60] dark:text-[#bcc2ff] text-xs w-40">Punteo máximo</th>
+                                <th class="text-center px-3 py-2 font-semibold text-[#000b60] dark:text-[#bcc2ff] text-xs w-28">Punteo</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-50 dark:divide-[#1a2f3c]">
@@ -719,11 +707,8 @@
                                         <p class="text-red-500 text-xs mt-0.5">{{ $message }}</p>
                                     @enderror
                                 </td>
-                                <td class="px-3 py-2">
-                                    <input wire:model="actsWizard.{{ $i }}.punteo_max"
-                                           type="number" min="0.01" step="0.01"
-                                           placeholder="{{ $metodoActividades === 'puntos' ? '5' : '100' }}"
-                                           class="w-full border border-gray-200 dark:border-[#2a3d4a] dark:bg-[#162a35] dark:text-[#dff4ff] rounded-lg px-2 py-1.5 text-sm text-center focus:outline-none focus:ring-2 focus:ring-[#000b60]">
+                                <td class="px-3 py-2 text-center text-xs font-bold text-[#000b60] dark:text-[#bcc2ff]">
+                                    100 pts
                                 </td>
                             </tr>
                             @endforeach

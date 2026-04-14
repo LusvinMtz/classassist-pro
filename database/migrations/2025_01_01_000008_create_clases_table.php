@@ -17,9 +17,9 @@ return new class extends Migration
             $table->foreignId('carrera_id')->nullable()->constrained('carrera')->nullOnDelete();
             $table->string('codigo', 20)->nullable();
             $table->tinyInteger('ciclo')->nullable(); // 1-10
-            // Evaluación de actividades
-            $table->enum('metodo_actividades', ['porcentaje', 'puntos'])->default('porcentaje');
-            $table->decimal('max_puntos_extra', 4, 1)->default(5.0);
+            // QR de inscripción de estudiantes
+            $table->string('token_inscripcion', 255)->nullable();
+            $table->timestamp('expiracion_inscripcion')->nullable();
             $table->timestamps();
             $table->softDeletes();
         });

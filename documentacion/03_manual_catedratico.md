@@ -16,16 +16,16 @@ El **Catedrático** tiene acceso a todas las herramientas académicas del sistem
 
 ## Funcionalidades disponibles
 
-| Módulo              | Descripción                                                         |
-|---------------------|---------------------------------------------------------------------|
-| Dashboard           | KPIs y gráficas de asistencia y participación de sus clases        |
-| Estudiantes         | Gestionar estudiantes inscritos en sus clases                      |
-| Sesiones            | Crear y administrar sesiones de clase diarias                      |
-| Pantalla de Clase   | QR de asistencia, ruleta de participación y grupos (todo en uno)   |
-| Calificaciones      | Registrar notas por tipo, actividades individuales y grupales      |
-| Desempeño           | Ranking de estudiantes por asistencia, participación y notas       |
-| Historial de Grupos | Consultar grupos generados en sesiones anteriores                  |
-| Exportar Excel      | Descargar datos de asistencia en formato Excel                     |
+| Módulo              | Descripción                                                                        |
+|---------------------|------------------------------------------------------------------------------------|
+| Dashboard           | KPIs y gráficas de asistencia y participación de sus clases                       |
+| Estudiantes         | Gestionar estudiantes: agregar, importar Excel y generar QR de inscripción        |
+| Sesiones            | Crear y administrar sesiones de clase diarias                                     |
+| Pantalla de Clase   | QR de asistencia, ruleta de participación y grupos (todo en uno)                  |
+| Calificaciones      | Registrar notas por tipo, actividades individuales y grupales                     |
+| Desempeño           | Ranking de estudiantes por asistencia, participación y notas                      |
+| Historial de Grupos | Consultar grupos generados en sesiones anteriores                                 |
+| Exportar Excel      | Descargar datos de asistencia en formato Excel                                    |
 
 ---
 
@@ -62,19 +62,38 @@ _[Insertar imagen aquí]_
 
 1. Selecciona la clase y haz clic en **Agregar Estudiante**.
 2. Completa:
-   - **Carné** (único dentro de la clase)
+   - **Carné** — formato obligatorio: `0000-00-0000` (ej. `8590-21-16653`)
    - **Nombre completo**
-   - **Correo electrónico** (opcional, único dentro de la clase)
+   - **Correo electrónico** — debe ser institucional `@miumg.edu.gt` (opcional, único dentro de la clase)
 3. Haz clic en **Agregar**.
+
+> **Reglas de validación:** el carné debe tener exactamente tres secciones separadas por guión: 4 dígitos (código de carrera) + 2 dígitos (año) + 1 o más dígitos (número de estudiante). El correo, si se ingresa, debe terminar en `@miumg.edu.gt`.
 
 _[Insertar imagen aquí]_
 
 #### Importar estudiantes desde Excel
 
 1. Haz clic en **Importar Excel**.
-2. Descarga la **plantilla** con el formato requerido (No., Carné, Estudiante, Correo Electrónico).
-3. Completa el archivo y cárgalo.
-4. El sistema importará los registros válidos y mostrará los errores encontrados (duplicados, datos faltantes, etc.).
+2. Descarga la **plantilla** con el formato requerido (Carné, Estudiante, Correo Electrónico).
+3. Completa el archivo respetando las reglas:
+   - **Carné:** formato `0000-00-0000` (ej. `8590-21-16653`)
+   - **Correo:** debe terminar en `@miumg.edu.gt`
+4. Carga el archivo.
+5. El sistema importará los registros válidos y mostrará los errores encontrados (formato incorrecto, duplicados, datos faltantes, etc.) con el número de fila correspondiente.
+
+_[Insertar imagen aquí]_
+
+#### Generar QR de Inscripción
+
+El QR de inscripción permite que los estudiantes se den de alta en la clase escaneando un código desde su dispositivo, sin que el catedrático tenga que registrarlos uno a uno.
+
+1. Selecciona la clase y haz clic en **QR Inscripción**.
+2. El sistema genera un código QR con vigencia de **24 horas**.
+3. Comparte el QR proyectándolo o enviando el enlace directo que aparece bajo el código.
+4. Los estudiantes escanan el QR y completan el formulario con su carné, nombre y correo institucional.
+5. Si necesitas invalidar el QR anterior (por seguridad o por error), haz clic en **Regenerar**.
+
+> **Importante:** el QR de inscripción es distinto al QR de asistencia. El primero inscribe al estudiante en la clase (una sola vez); el segundo registra su asistencia en una sesión específica (cada día de clase).
 
 _[Insertar imagen aquí]_
 
@@ -179,10 +198,15 @@ El sistema genera grupos optimizados minimizando la repetición de pares de estu
 2. Elige el modo:
    - **Por número de grupos:** define cuántos grupos quieres.
    - **Por tamaño de grupo:** define cuántos integrantes por grupo.
-3. Ingresa la cantidad y haz clic en **Generar**.
-4. El sistema muestra un preview de los grupos con sus integrantes.
-5. Si el resultado es satisfactorio, haz clic en **Guardar**.
-6. Si deseas otra distribución, haz clic en **Generar** nuevamente.
+3. Ingresa la cantidad.
+4. (Opcional) Escribe una **Descripción** de la actividad que realizarán (ej. "Debate U3"). Esto quedará registrado en el historial de grupos para que puedas recordar qué hicieron en cada sesión.
+5. Haz clic en **Generar grupos**.
+6. El sistema muestra un preview de los grupos con sus integrantes.
+7. Si el resultado es satisfactorio, haz clic en **Guardar grupos**.
+8. Tras guardar, aparece el modal **¿Crear actividad grupal?**:
+   - Ingresa el **nombre** y el **punteo máximo** de la actividad y haz clic en **Crear actividad**.
+   - Si prefieres crear la actividad más tarde (o no la necesitas), haz clic en **Omitir**.
+9. Si deseas otra distribución antes de guardar, haz clic en **Regenerar**.
 
 _[Insertar imagen aquí]_
 
@@ -217,27 +241,38 @@ El módulo se organiza en pestañas:
 3. Ingresa la nota de cada estudiante (respetando el punteo máximo del tipo).
 4. Haz clic en **Guardar**.
 
+> **Bloqueo de notas:** una vez guardada la nota de un estudiante, queda bloqueada con un ícono de candado. El botón **Guardar** desaparece automáticamente cuando todos los estudiantes tienen nota registrada.
+>
+> **¿Error en una nota?** Reporta el caso al administrador del sistema. Solo el administrador puede modificar notas ya guardadas.
+
 _[Insertar imagen aquí]_
 
 ---
 
 #### Gestionar actividades
 
+> **Restricción de ciclo cerrado:** una vez guardadas las notas de todos los tipos fijos (Parcial 1 hasta Examen Final) para todos los estudiantes, el ciclo de calificaciones se considera cerrado y no se pueden agregar nuevas actividades.
+
 **Crear una actividad:**
-1. En la pestaña **Actividades**, haz clic en **Nueva Actividad**.
-2. Ingresa nombre, punteo máximo y tipo (individual o grupal).
-3. Para actividades grupales, selecciona la sesión con los grupos formados.
-4. Guarda la actividad.
+1. En la pestaña **Actividades**, haz clic en **Agregar**.
+2. Ingresa el nombre de la actividad (se califica sobre 100 pts).
+3. Guarda la actividad.
+
+**Actividades desde grupos:**
+- Al guardar grupos en la Pantalla de Clase, el sistema ofrece crear una actividad grupal automáticamente.
+
+**Actividades desde ruleta:**
+- Antes de girar la ruleta, crea una actividad de sesión. Cada estudiante seleccionado acumulará su nota en esa misma actividad.
 
 **Registrar notas de actividad individual:**
-1. Selecciona la actividad.
-2. Ingresa la nota de cada estudiante.
-3. Guarda.
+1. Ingresa la nota de cada estudiante (0–100).
+2. Haz clic en **Guardar notas**.
+3. Una vez guardadas, las notas se bloquean. El botón desaparece.
 
 **Registrar notas de actividad grupal:**
-1. Selecciona la actividad.
-2. Ingresa una nota por grupo.
-3. El sistema propaga automáticamente la nota a todos los integrantes del grupo.
+1. Ingresa una nota por grupo (0–100).
+2. Haz clic en **Guardar y propagar**.
+3. El sistema distribuye la misma nota a todos los integrantes del grupo.
 
 _[Insertar imagen aquí]_
 
@@ -247,19 +282,11 @@ _[Insertar imagen aquí]_
 
 ---
 
-#### Configurar el método de evaluación
-
-En la pestaña **Resumen**, puedes ajustar:
-- **Método de actividades:** porcentaje ponderado o puntos acumulados.
-- **Máximo puntos extra:** límite de puntos que la participación de ruleta puede aportar a la nota final.
-
----
-
 #### Ver resumen de notas
 
 La pestaña **Resumen** muestra:
 - Nota de cada tipo de calificación.
-- Puntos extra de participación (hasta el máximo configurado).
+- Puntos extra de participación (máximo 5 pts).
 - Nota total calculada.
 - Estado: **Aprobado** (≥ 61) o **Reprobado** (< 61).
 
@@ -308,9 +335,13 @@ _[Insertar imagen aquí]_
 Consulta los grupos formados en sesiones anteriores de tu clase.
 
 1. Accede a **Historial Grupos** desde el menú.
-2. Selecciona una clase.
+2. Selecciona una de **tus clases** (el selector muestra únicamente las clases que administras o en las que participas).
 3. Se muestran todas las sesiones que tuvieron grupos generados, ordenadas de más reciente a más antigua.
-4. Para cada sesión, se listan los grupos y sus integrantes.
+4. Para cada sesión se muestra:
+   - Fecha y estado (activa hoy / finalizada).
+   - Número de grupos y total de estudiantes.
+   - **Descripción de la actividad** (si se ingresó al guardar).
+   - Los grupos con sus integrantes.
 
 _[Insertar imagen aquí]_
 
@@ -347,6 +378,7 @@ _[Insertar imagen aquí]_
 - **Finaliza la sesión al terminar la clase** para evitar que la sesión quede abierta innecesariamente (el sistema la cerrará automáticamente a las 23:59, pero es buena práctica hacerlo manualmente).
 - **Usa la ruleta con frecuencia** para que la participación se distribuya equitativamente entre estudiantes y contribuya a su calificación.
 - **Genera grupos en cada sesión** para que el algoritmo de co-ocurrencia tenga más datos y optimice mejor la distribución en sesiones futuras.
-- **Importa estudiantes masivamente desde Excel** al inicio del ciclo para ahorrar tiempo de captura.
+- **Importa estudiantes masivamente desde Excel** al inicio del ciclo para ahorrar tiempo de captura, o usa el **QR de Inscripción** para que los propios estudiantes se registren.
+- **Verifica el formato de carné y correo** antes de importar: el carné debe seguir el patrón `0000-00-0000` y el correo debe ser `@miumg.edu.gt`. Los registros que no cumplan estas reglas serán rechazados con el número de fila correspondiente.
 - **Configura el método de evaluación de actividades** antes de comenzar a registrar notas, para evitar recalcular manualmente.
 - **Revisa el resumen de notas** periódicamente para identificar estudiantes en riesgo académico antes del cierre del ciclo.

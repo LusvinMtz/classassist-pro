@@ -68,4 +68,9 @@ Route::get('/asistir/{token}', function (string $token) {
     return view('asistencia.registrar', ['token' => $token]);
 })->name('asistir');
 
+// ─── Inscripción a clase vía QR (público — estudiantes sin cuenta) ────────────
+Route::get('/inscribirse/{token}', function (string $token) {
+    return view('estudiantes.inscribirse', ['token' => $token]);
+})->name('inscribirse');
+
 require __DIR__.'/auth.php';

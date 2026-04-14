@@ -19,6 +19,11 @@
                     <span class="material-symbols-outlined" style="font-size:18px">upload_file</span>
                     Importar Excel
                 </button>
+                <button wire:click="openQrInscripcion"
+                        class="border border-[#000b60] dark:border-[#bcc2ff] text-[#000b60] dark:text-[#bcc2ff] px-4 py-2 rounded-lg font-semibold flex items-center gap-2 hover:bg-blue-50 dark:hover:bg-[#0d2535] transition">
+                    <span class="material-symbols-outlined" style="font-size:18px">qr_code_2</span>
+                    QR Inscripción
+                </button>
                 <button wire:click="openCreate"
                         class="bg-[#000b60] text-white px-4 py-2 rounded-lg font-semibold flex items-center gap-2 hover:opacity-90 transition">
                     <span class="material-symbols-outlined" style="font-size:18px">person_add</span>
@@ -226,7 +231,7 @@
                         <label class="block text-sm font-semibold mb-1">
                             Carné <span class="text-red-500">*</span>
                         </label>
-                        <input wire:model="carnet" type="text" placeholder="Ej. 202300001"
+                        <input wire:model="carnet" type="text" placeholder="Ej. 8590-21-16653"
                                class="w-full border border-gray-200 dark:border-[#2a3d4a] dark:bg-[#162a35] dark:text-[#dff4ff] rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#000b60] @error('carnet') border-red-400 @enderror">
                         @error('carnet')<p class="text-red-500 text-xs mt-1">{{ $message }}</p>@enderror
                     </div>
@@ -240,7 +245,7 @@
                     </div>
                     <div>
                         <label class="block text-sm font-semibold mb-1">Correo Electrónico</label>
-                        <input wire:model="correo" type="email" placeholder="correo@universidad.edu"
+                        <input wire:model="correo" type="email" placeholder="correo@miumg.edu.gt"
                                class="w-full border border-gray-200 dark:border-[#2a3d4a] dark:bg-[#162a35] dark:text-[#dff4ff] rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#000b60] @error('correo') border-red-400 @enderror">
                         @error('correo')<p class="text-red-500 text-xs mt-1">{{ $message }}</p>@enderror
                     </div>
@@ -262,6 +267,60 @@
         </div>
     @endif
 
+
+    {{-- MODAL: QR de Inscripción (solo catedrático) --}}
+    @if($showQrModal)
+        <div class="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+            <div class="bg-white dark:bg-[#1e333c] rounded-xl shadow-xl w-full max-w-md mx-4 p-6">
+
+                <div class="flex justify-between items-center mb-5">
+                    <h2 class="text-xl font-black text-[#000b60] dark:text-[#bcc2ff]">QR de Inscripción</h2>
+                    <button wire:click="closeQrModal" class="text-gray-400 hover:text-gray-600">
+                        <span class="material-symbols-outlined">close</span>
+                    </button>
+                </div>
+
+                <p class="text-sm text-gray-500 dark:text-gray-400 mb-4 text-center">
+                    Comparte este QR con tus estudiantes para que se inscriban en la clase.<br>
+                    <span class="text-xs text-amber-600 dark:text-amber-400 font-semibold">Válido por 24 horas.</span>
+                </p>
+
+                {{-- QR SVG --}}
+                @if($qrSvg)
+                    <div class="flex justify-center mb-4">
+                        <div class="bg-white p-3 rounded-xl border border-gray-200 shadow-sm inline-block">
+                            {!! $qrSvg !!}
+                        </div>
+                    </div>
+                @endif
+
+                {{-- URL del enlace --}}
+                @if($qrUrl)
+                    <div class="bg-[#e6f6ff] dark:bg-[#0d2535] rounded-lg p-3 mb-4">
+                        <p class="text-xs font-bold text-[#000b60] dark:text-[#bcc2ff] mb-1">Enlace directo:</p>
+                        <p class="text-xs font-mono break-all text-gray-600 dark:text-gray-300">{{ $qrUrl }}</p>
+                    </div>
+                @endif
+
+                <div class="flex gap-3">
+                    <button wire:click="regenerarQr"
+                            wire:loading.attr="disabled" wire:target="regenerarQr"
+                            class="flex-1 border border-[#000b60] dark:border-[#bcc2ff] text-[#000b60] dark:text-[#bcc2ff] py-2 rounded-lg font-semibold hover:bg-blue-50 dark:hover:bg-[#0d2535] transition disabled:opacity-60 flex items-center justify-center gap-2">
+                        <span wire:loading.remove wire:target="regenerarQr" class="flex items-center gap-2">
+                            <span class="material-symbols-outlined" style="font-size:18px">refresh</span>
+                            Regenerar
+                        </span>
+                        <span wire:loading wire:target="regenerarQr" style="display:none">Generando...</span>
+                    </button>
+                    <button wire:click="closeQrModal"
+                            class="flex-1 bg-[#000b60] text-white py-2 rounded-lg font-semibold hover:opacity-90 transition">
+                        Cerrar
+                    </button>
+                </div>
+
+            </div>
+        </div>
+    @endif
 
     {{-- MODAL: Importar Excel (solo catedrático) --}}
     @if($showImportModal)
@@ -297,14 +356,17 @@
                             <tbody>
                                 <tr class="text-gray-600 dark:text-gray-300">
                                     <td class="border border-blue-100 dark:border-[#1a2f3c] px-3 py-1.5">1</td>
-                                    <td class="border border-blue-100 dark:border-[#1a2f3c] px-3 py-1.5">202300001</td>
+                                    <td class="border border-blue-100 dark:border-[#1a2f3c] px-3 py-1.5">8590-21-16653</td>
                                     <td class="border border-blue-100 dark:border-[#1a2f3c] px-3 py-1.5">Juan Pérez García</td>
-                                    <td class="border border-blue-100 dark:border-[#1a2f3c] px-3 py-1.5">juan@uni.edu</td>
+                                    <td class="border border-blue-100 dark:border-[#1a2f3c] px-3 py-1.5">juan@miumg.edu.gt</td>
                                 </tr>
                             </tbody>
                         </table>
                     </div>
                     <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">Formatos aceptados: <strong>.xlsx</strong>, <strong>.xls</strong>, <strong>.csv</strong> · Máx. 10 MB</p>
+                    <p class="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                        Carné: formato <strong>0000-00-0000</strong> (ej. 8590-21-16653) · Correo: <strong>@miumg.edu.gt</strong>
+                    </p>
                 </div>
 
                 <div>
@@ -351,7 +413,7 @@
                             wire:loading.attr="disabled" wire:target="importar"
                             class="flex-1 bg-[#000b60] text-white py-2 rounded-lg font-semibold hover:opacity-90 transition disabled:opacity-60">
                         <span wire:loading.remove wire:target="importar">Importar</span>
-                        <span wire:loading wire:target="importar">Importando...</span>
+                        <span wire:loading wire:target="importar" style="display:none">Importando...</span>
                     </button>
                 </div>
 

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Models\ActividadNota;
 
 class Estudiante extends Model
 {
@@ -45,6 +46,11 @@ class Estudiante extends Model
     public function calificaciones()
     {
         return $this->hasMany(Calificacion::class, 'estudiante_id');
+    }
+
+    public function actividadNotas()
+    {
+        return $this->hasMany(ActividadNota::class, 'estudiante_id');
     }
 
     public function asignaciones()
