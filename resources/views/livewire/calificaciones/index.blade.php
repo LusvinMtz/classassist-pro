@@ -76,13 +76,6 @@
                 <span class="material-symbols-outlined" style="font-size:18px">edit_note</span>
                 {{ $tipoActivo->nombre }} — Máx: {{ $tipoActivo->punteo_max }} pts
             </span>
-            @if(!$allLocked)
-            <button wire:click="guardarNotas"
-                    class="bg-[#000b60] text-white px-4 py-2 rounded-lg text-sm font-bold hover:opacity-90 transition flex items-center gap-2">
-                <span class="material-symbols-outlined" style="font-size:16px">save</span>
-                Guardar todas
-            </button>
-            @endif
         </div>
 
         @if($estudiantes->isEmpty())
@@ -465,12 +458,14 @@
                 <span class="material-symbols-outlined" style="font-size:18px">leaderboard</span>
                 Resumen de calificaciones
             </span>
-            <span class="text-white/60 text-xs">
-                Aprobación: ≥ 61 pts
-                @if(true)
-                    · Puntos extra ruleta: hasta 5 pts
-                @endif
-            </span>
+            <div class="flex items-center gap-3">
+                <span class="text-white/60 text-xs">Aprobación: ≥ 61 pts</span>
+                <a href="{{ route('calificaciones.acta-pdf', $claseId) }}" target="_blank"
+                   class="inline-flex items-center gap-1.5 bg-white/15 hover:bg-white/25 border border-white/30 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition">
+                    <span class="material-symbols-outlined" style="font-size:15px">picture_as_pdf</span>
+                    Descargar Acta PDF
+                </a>
+            </div>
         </div>
 
         <div class="overflow-x-auto">
@@ -485,12 +480,6 @@
                             <p class="text-gray-400 font-normal">/{{ $tipo->punteo_max }} pts</p>
                         </th>
                         @endforeach
-                        @if(true)
-                        <th class="text-center px-4 py-3 font-semibold text-amber-600 dark:text-amber-400 text-xs min-w-[100px] bg-amber-50 dark:bg-amber-900/10">
-                            <p>Extra</p>
-                            <p class="font-normal opacity-70">(ruleta)</p>
-                        </th>
-                        @endif
                         <th class="text-center px-5 py-3 font-semibold text-gray-700 dark:text-gray-300 text-xs min-w-[130px] bg-blue-50 dark:bg-[#0d2535]">
                             TOTAL / 100
                         </th>
@@ -502,10 +491,9 @@
                 <tbody class="divide-y divide-gray-50 dark:divide-[#1a2f3c]">
                     @foreach($resumen as $fila)
                     @php
-                        $total    = $fila['total'];
-                        $aprobado = $fila['aprobado'];
-                        $extra    = $fila['puntos_extra'] ?? 0;
-                        $totalColor = $total >= 61 ? 'text-green-600 bg-green-50 dark:bg-green-900/20' : ($total >= 45 ? 'text-orange-500 bg-orange-50 dark:bg-orange-900/20' : 'text-red-600 bg-red-50 dark:bg-red-900/20');
+                        $total      = $fila['total'];
+                        $aprobado   = $fila['aprobado'];
+                        $totalColor = $total >= 61 ? 'text-green-600 bg-green-50 dark:bg-green-900/20' : 'text-red-600 bg-red-50 dark:bg-red-900/20';
                     @endphp
                     <tr class="hover:bg-[#f3faff] dark:hover:bg-[#1a2f3c]">
                         <td class="px-4 md:px-5 py-3 font-mono text-xs text-[#000b60] dark:text-[#bcc2ff] sticky left-0 bg-white dark:bg-[#1e333c]">{{ $fila['carnet'] }}</td>
@@ -527,15 +515,6 @@
                             @endif
                         </td>
                         @endforeach
-                        @if(true)
-                        <td class="px-4 py-3 text-center bg-amber-50/50 dark:bg-amber-900/5">
-                            @if($extra > 0)
-                                <span class="font-bold text-amber-600 dark:text-amber-400">+{{ number_format($extra, 1) }}</span>
-                            @else
-                                <span class="text-gray-300 text-xs">—</span>
-                            @endif
-                        </td>
-                        @endif
                         <td class="px-5 py-3 text-center bg-blue-50/50 dark:bg-blue-900/5">
                             <span class="font-black text-sm px-3 py-1 rounded-full {{ $totalColor }}">
                                 {{ number_format($total, 2) }}
@@ -566,12 +545,8 @@
         </div>
 
         <div class="px-5 py-3 bg-gray-50 dark:bg-[#162a35] border-t border-gray-100 dark:border-[#1a2f3c] text-xs text-gray-400 flex flex-wrap gap-4">
-            <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-green-500 inline-block"></span> ≥ 61 pts — Aprobado</span>
-            <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-orange-400 inline-block"></span> 45–60 pts — En riesgo</span>
-            <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-red-500 inline-block"></span> &lt; 45 pts — Reprobado</span>
-            @if(true)
-            <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-amber-400 inline-block"></span> Columna Extra = puntos de participación (ruleta)</span>
-            @endif
+            <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-green-500 inline-block"></span> Aprobado</span>
+            <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-red-500 inline-block"></span> Reprobado</span>
         </div>
     </div>
     @endif

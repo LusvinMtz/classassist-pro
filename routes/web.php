@@ -47,6 +47,10 @@ Route::middleware(['auth', 'verified', 'role.catedratico'])->group(function () {
         );
     })->name('estudiantes.plantilla');
 
+    // PDF Acta de Calificaciones
+    Route::get('calificaciones/{claseId}/acta-pdf', [\App\Http\Controllers\CalificacionesPdfController::class, 'download'])
+        ->name('calificaciones.acta-pdf');
+
     // Exportación Excel
     Route::get('exportacion/{claseId}/download', function (int $claseId) {
         $user  = auth()->user();

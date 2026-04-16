@@ -3,6 +3,7 @@
 namespace App\Livewire\Exportacion;
 
 use App\Exports\AsistenciaExport;
+use App\Models\Calificacion;
 use App\Models\Clase;
 use App\Models\Sesion;
 use App\Models\Asistencia;
@@ -14,13 +15,22 @@ class Index extends Component
 {
     public ?int $claseId = null;
 
+    private function claseQuery()
+    {
+        $user = auth()->user();
+        if ($user->isAdmin()) {
+            return Clase::where('usuario_id', $user->id);
+        }
+        return $user->clasesImpartidas();
+    }
+
     public function render()
     {
-        $clases  = Clase::where('usuario_id', auth()->id())->get();
-        $stats   = null;
+        $clases = $this->claseQuery()->get();
+        $stats  = null;
 
         if ($this->claseId) {
-            $clase     = Clase::where('usuario_id', auth()->id())->findOrFail($this->claseId);
+            $clase     = $this->claseQuery()->findOrFail($this->claseId);
             $sesionIds = Sesion::where('clase_id', $this->claseId)->pluck('id');
 
             $stats = [
@@ -28,6 +38,7 @@ class Index extends Component
                 'sesiones'       => $sesionIds->count(),
                 'asistencias'    => Asistencia::whereIn('sesion_id', $sesionIds)->count(),
                 'participaciones'=> Participacion::whereIn('sesion_id', $sesionIds)->count(),
+                'calificaciones' => Calificacion::where('clase_id', $this->claseId)->count(),
             ];
         }
 
@@ -37,7 +48,7 @@ class Index extends Component
     public function updatedClaseId(): void
     {
         if ($this->claseId) {
-            Clase::where('usuario_id', auth()->id())->findOrFail($this->claseId);
+            $this->claseQuery()->findOrFail($this->claseId);
         }
     }
 
@@ -45,7 +56,7 @@ class Index extends Component
     {
         if (!$this->claseId) return null;
 
-        $clase = Clase::where('usuario_id', auth()->id())->findOrFail($this->claseId);
+        $clase = $this->claseQuery()->findOrFail($this->claseId);
 
         $nombre = 'classassist_' . \Illuminate\Support\Str::slug($clase->nombre) . '_' . now()->format('Ymd_His') . '.xlsx';
 

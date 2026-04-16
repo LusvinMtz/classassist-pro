@@ -54,6 +54,13 @@
                             <p class="text-xs text-gray-400">Registros de la ruleta con calificación y comentario</p>
                         </div>
                     </li>
+                    <li class="flex items-start gap-3 text-sm">
+                        <span class="material-symbols-outlined text-amber-500 flex-shrink-0" style="font-size:18px">grade</span>
+                        <div>
+                            <p class="font-bold dark:text-gray-200">Hoja 4: Calificaciones</p>
+                            <p class="text-xs text-gray-400">Notas por tipo de calificación y total por estudiante</p>
+                        </div>
+                    </li>
                 </ul>
             </div>
 
@@ -71,7 +78,7 @@
 
             @else
 
-                <div class="grid grid-cols-2 gap-4 mb-5">
+                <div class="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-5">
                     <div class="bg-white dark:bg-[#1e333c] rounded-xl shadow px-5 py-4 flex items-center gap-4">
                         <span class="material-symbols-outlined text-[#000b60] dark:text-[#bcc2ff]" style="font-size:32px">groups</span>
                         <div>
@@ -100,6 +107,13 @@
                             <p class="text-xs text-gray-400 font-semibold">Participaciones</p>
                         </div>
                     </div>
+                    <div class="bg-white dark:bg-[#1e333c] rounded-xl shadow px-5 py-4 flex items-center gap-4">
+                        <span class="material-symbols-outlined text-amber-500" style="font-size:32px">grade</span>
+                        <div>
+                            <p class="text-2xl font-black text-[#000b60] dark:text-[#bcc2ff]">{{ $stats['calificaciones'] }}</p>
+                            <p class="text-xs text-gray-400 font-semibold">Calificaciones</p>
+                        </div>
+                    </div>
                 </div>
 
                 @if($stats['sesiones'] === 0)
@@ -110,7 +124,7 @@
                 @else
                     <div class="bg-[#e6f6ff] dark:bg-[#0d2535] rounded-xl px-5 py-4 text-[#000b60] dark:text-[#bcc2ff] text-sm flex items-center gap-3">
                         <span class="material-symbols-outlined flex-shrink-0">info</span>
-                        El archivo Excel incluirá todos los datos históricos de esta clase en tres hojas separadas.
+                        El archivo Excel incluirá todos los datos históricos de esta clase en cuatro hojas separadas.
                     </div>
                 @endif
 

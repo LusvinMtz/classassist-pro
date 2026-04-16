@@ -95,24 +95,26 @@
                         <th class="text-center px-4 py-3 font-bold w-16">+</th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-gray-100 dark:divide-[#1a2f3c]" x-data>
-                    @forelse ($registros as $reg)
-                        @php
-                            $badgeNivel = match($reg->nivel) {
-                                'advertencia' => 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
-                                'error'       => 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
-                                default       => 'bg-[#e6f6ff] text-[#000b60] dark:bg-[#0d2535] dark:text-[#bcc2ff]',
-                            };
-                            $rowBg = match($reg->nivel) {
-                                'error'       => 'bg-red-50/60 dark:bg-red-950/20',
-                                'advertencia' => 'bg-amber-50/60 dark:bg-amber-950/20',
-                                default       => '',
-                            };
-                            $tieneDetalle = $reg->datos_anteriores || $reg->datos_nuevos;
-                        @endphp
+                {{-- Cada registro vive en su propio <tbody> para que Alpine scope funcione --}}
+                @forelse ($registros as $reg)
+                    @php
+                        $badgeNivel = match($reg->nivel) {
+                            'advertencia' => 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
+                            'error'       => 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
+                            default       => 'bg-[#e6f6ff] text-[#000b60] dark:bg-[#0d2535] dark:text-[#bcc2ff]',
+                        };
+                        $rowBg = match($reg->nivel) {
+                            'error'       => 'bg-red-50/60 dark:bg-red-950/20',
+                            'advertencia' => 'bg-amber-50/60 dark:bg-amber-950/20',
+                            default       => '',
+                        };
+                        $tieneDetalle = $reg->datos_anteriores || $reg->datos_nuevos;
+                    @endphp
 
-                        <tr class="hover:bg-[#f3faff] dark:hover:bg-[#1a2f3c] transition {{ $rowBg }}"
-                            x-data="{ open: false }">
+                    <tbody class="divide-y divide-gray-100 dark:divide-[#1a2f3c]"
+                           x-data="{ open: false }">
+
+                        <tr class="hover:bg-[#f3faff] dark:hover:bg-[#1a2f3c] transition {{ $rowBg }}">
                             <td class="px-5 py-3 whitespace-nowrap text-xs text-gray-500 dark:text-gray-400">
                                 {{ $reg->created_at->format('d/m/Y') }}<br>
                                 <span class="font-mono font-semibold">{{ $reg->created_at->format('H:i:s') }}</span>
@@ -169,7 +171,7 @@
                             </td>
                         </tr>
 
-                        {{-- Fila expandida --}}
+                        {{-- Fila expandida (mismo <tbody> = mismo scope Alpine) --}}
                         @if ($tieneDetalle)
                             <tr x-show="open" style="display:none"
                                 class="bg-[#f3faff] dark:bg-[#0d2535]">
@@ -198,15 +200,17 @@
                             </tr>
                         @endif
 
-                    @empty
+                    </tbody>
+                @empty
+                    <tbody>
                         <tr>
                             <td colspan="8" class="px-6 py-16 text-center text-gray-400">
                                 <span class="material-symbols-outlined" style="font-size:40px">policy</span>
                                 <p class="mt-2 text-sm">No hay registros que coincidan con los filtros</p>
                             </td>
                         </tr>
-                    @endforelse
-                </tbody>
+                    </tbody>
+                @endforelse
             </table>
         </div>
 

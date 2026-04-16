@@ -25,6 +25,11 @@ class Index extends Component
     /* ── Notas para tipos fijos ────────────────────────────────────── */
     public array $notas = []; // [estudiante_id => nota (string)]
 
+    /* ── Estado de guardado (para controlar candado visual) ─────────── */
+    public bool $notasGuardadas      = false;
+    public bool $notasActsGuardadas  = false;
+    public bool $notasGruposGuardadas = false;
+
     /* ── Actividades ───────────────────────────────────────────────── */
     // Modal definir actividades
     public bool   $showActModal  = false;
@@ -114,7 +119,11 @@ class Index extends Component
             'clases', 'tipos', 'clase', 'estudiantes',
             'actividades', 'tipoActivo', 'resumen', 'gruposPorActividad',
             'esAdmin', 'gradoCerrada'
-        ));
+        ) + [
+            'notasGuardadas'       => $this->notasGuardadas,
+            'notasActsGuardadas'   => $this->notasActsGuardadas,
+            'notasGruposGuardadas' => $this->notasGruposGuardadas,
+        ]);
     }
 
     private function claseGradoCerrada($clase, $tipos, $estudiantes): bool
@@ -137,17 +146,23 @@ class Index extends Component
         if ($this->claseId) {
             $this->queryClaseAutorizada()->findOrFail($this->claseId); // verificar acceso
         }
-        $this->tab        = 'resumen';
-        $this->notas      = [];
-        $this->notasGrupos = [];
+        $this->tab                 = 'resumen';
+        $this->notas               = [];
+        $this->notasGrupos         = [];
+        $this->notasGuardadas      = false;
+        $this->notasActsGuardadas  = false;
+        $this->notasGruposGuardadas = false;
     }
 
     /* ── Cambio de tab ──────────────────────────────────────────────── */
     public function updatedTab(): void
     {
-        $this->notas       = [];
-        $this->notasActs   = [];
-        $this->notasGrupos = [];
+        $this->notas                = [];
+        $this->notasActs            = [];
+        $this->notasGrupos          = [];
+        $this->notasGuardadas       = false;
+        $this->notasActsGuardadas   = false;
+        $this->notasGruposGuardadas = false;
 
         if (!$this->claseId) return;
         if ($this->tab === 'resumen') return;
@@ -266,6 +281,7 @@ class Index extends Component
             );
         }
 
+        $this->notasGuardadas = true;
         $this->dispatch('notify', message: 'Notas guardadas correctamente.');
     }
 
@@ -308,18 +324,28 @@ class Index extends Component
             ]);
         }
 
-        $this->showActModal  = false;
-        $this->actEditId     = null;
-        $this->actNombre     = '';
-        $this->actPunteo     = '100';
-        $this->loadNotasActividades();
+        $this->showActModal = false;
+        $this->actNombre    = '';
+        $this->actPunteo    = '100';
+
+        if ($this->actEditId) {
+            // Solo cambió el nombre — el ID es el mismo, las notas en memoria se preservan
+            $this->actEditId = null;
+        } else {
+            // Nueva actividad: agregar su slot vacío sin destruir el resto de $notasActs
+            $this->actEditId = null;
+            $nueva = Actividad::where('clase_id', $this->claseId)->orderByDesc('orden')->first();
+            if ($nueva && !isset($this->notasActs[$nueva->id])) {
+                $this->notasActs[$nueva->id] = [];
+            }
+        }
     }
 
     public function eliminarActividad(int $id): void
     {
         Actividad::where('clase_id', $this->claseId)->findOrFail($id)->delete();
-        $this->loadNotasActividades();
-        $this->loadNotasGrupos();
+        unset($this->notasActs[$id]);
+        unset($this->notasGrupos[$id]);
     }
 
     /* ── Guardar notas de actividades individuales ─────────────────── */
@@ -360,6 +386,7 @@ class Index extends Component
             }
         }
 
+        $this->notasActsGuardadas = true;
         $this->dispatch('notify', message: 'Notas de actividades guardadas.');
     }
 
@@ -413,6 +440,7 @@ class Index extends Component
             }
         }
 
+        $this->notasGruposGuardadas = true;
         $this->dispatch('notify', message: 'Notas grupales guardadas y propagadas.');
     }
 
@@ -497,24 +525,55 @@ class Index extends Component
         }
 
         $clase = $this->queryClaseAutorizada()->findOrFail($this->claseId);
-        Actividad::where('clase_id', $this->claseId)->whereNull('grupo_sesion_id')->delete();
+
+        // Actividades individuales existentes indexadas por orden
+        $existentes = Actividad::where('clase_id', $this->claseId)
+            ->whereNull('grupo_sesion_id')
+            ->orderBy('orden')
+            ->get()
+            ->keyBy('orden');
 
         foreach ($this->actsWizard as $i => $actData) {
-            Actividad::create([
-                'clase_id'   => $this->claseId,
-                'nombre'     => trim($actData['nombre']),
-                'punteo_max' => 100,
-                'orden'      => $i + 1,
-            ]);
+            $orden = $i + 1;
+            if (isset($existentes[$orden])) {
+                // Actualiza solo el nombre — preserva el ID y sus notas
+                $existentes[$orden]->update(['nombre' => trim($actData['nombre'])]);
+            } else {
+                Actividad::create([
+                    'clase_id'   => $this->claseId,
+                    'nombre'     => trim($actData['nombre']),
+                    'punteo_max' => 100,
+                    'orden'      => $orden,
+                ]);
+            }
         }
 
+        // Eliminar solo las actividades sobrantes que NO tengan notas guardadas
+        $wizardCount = count($this->actsWizard);
+        Actividad::where('clase_id', $this->claseId)
+            ->whereNull('grupo_sesion_id')
+            ->where('orden', '>', $wizardCount)
+            ->whereDoesntHave('notas')
+            ->delete();
+
         $this->showPlantillaModal = false;
-        $this->loadNotasActividades();
+
+        $actividadesModelos = Actividad::where('clase_id', $this->claseId)
+            ->whereNull('grupo_sesion_id')
+            ->orderBy('orden')
+            ->get();
+
+        // Agregar slots vacíos solo para actividades nuevas, sin tocar las existentes en $notasActs
+        foreach ($actividadesModelos as $act) {
+            if (!isset($this->notasActs[$act->id])) {
+                $this->notasActs[$act->id] = [];
+            }
+        }
 
         $nombre = 'actividades_' . \Illuminate\Support\Str::slug($clase->nombre) . '.xlsx';
 
         return Excel::download(
-            new ActividadesPlantillaExport($clase, $this->actsWizard),
+            new ActividadesPlantillaExport($clase, $actividadesModelos),
             $nombre
         );
     }
@@ -645,10 +704,7 @@ class Index extends Component
                 }
             }
 
-            // Puntos extra (capped)
-            $extra = min((float) ($participaciones[$e->id] ?? 0), $maxExtra);
-            $fila['puntos_extra'] = round($extra, 2);
-            $fila['total']        = round($fila['total'] + $extra, 2);
+            $fila['total'] = round($fila['total'], 2);
 
             // Estado de aprobación
             if ($tieneTodasLasNotas) {

@@ -20,6 +20,7 @@ class AsistenciaExport implements WithMultipleSheets
             new Sheets\ResumenSheet($this->claseId, $this->claseNombre),
             new Sheets\DetalleAsistenciaSheet($this->claseId),
             new Sheets\ParticipacionesSheet($this->claseId),
+            new Sheets\CalificacionesSheet($this->claseId),
         ];
     }
 }
