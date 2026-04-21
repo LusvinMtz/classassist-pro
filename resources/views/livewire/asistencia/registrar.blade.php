@@ -121,7 +121,7 @@
                 <div>
                     <label class="block text-sm font-bold text-[#000b60] dark:text-[#bcc2ff] mb-2">
                         Selfie de verificación
-                        <span class="text-gray-400 dark:text-gray-500 font-normal">(opcional)</span>
+                        <span class="text-red-500">*</span>
                     </label>
 
                     <div x-show="selfieDataUrl" class="relative mb-3">
@@ -163,6 +163,15 @@
 
                     <p x-show="errorCamara" x-text="errorCamara"
                        class="text-xs text-amber-600 dark:text-amber-400 mt-1 text-center"></p>
+
+                    <p x-show="!selfieDataUrl && intentoEnvio"
+                       class="text-red-500 dark:text-red-400 text-xs mt-1 text-center">
+                        La selfie es obligatoria para registrar asistencia.
+                    </p>
+
+                    @error('selfieData')
+                        <p class="text-red-500 dark:text-red-400 text-xs mt-1 text-center">{{ $message }}</p>
+                    @enderror
                 </div>
 
                 {{-- Mensaje de error/alerta --}}
@@ -190,7 +199,11 @@
                             <span class="material-symbols-outlined" style="font-size:18px">location_off</span>
                             Esperando ubicación…
                         </span>
-                        <span x-show="gpsEstado === 'ok'">Registrar Asistencia</span>
+                        <span x-show="gpsEstado === 'ok' && !selfieDataUrl" class="flex items-center gap-2">
+                            <span class="material-symbols-outlined" style="font-size:18px">add_a_photo</span>
+                            Toma tu selfie primero
+                        </span>
+                        <span x-show="gpsEstado === 'ok' && selfieDataUrl">Registrar Asistencia</span>
                     </span>
                     <span wire:loading style="display:none">Registrando...</span>
                 </button>
@@ -215,10 +228,11 @@ function registroApp() {
         longitudStr: '',
 
         // Cámara
-        camaraActiva: false,
+        camaraActiva:  false,
         selfieDataUrl: '',
-        errorCamara:  '',
-        _stream:      null,
+        errorCamara:   '',
+        intentoEnvio:  false,
+        _stream:       null,
 
         init() {
             this.pedirUbicacion();
@@ -297,10 +311,10 @@ function registroApp() {
         },
 
         async enviarRegistro() {
+            this.intentoEnvio = true;
             if (this.gpsEstado !== 'ok') return;
-            if (this.selfieDataUrl) {
-                await this.$wire.set('selfieData', this.selfieDataUrl);
-            }
+            if (!this.selfieDataUrl) return;
+            await this.$wire.set('selfieData', this.selfieDataUrl);
             this.$wire.registrar();
         },
     };

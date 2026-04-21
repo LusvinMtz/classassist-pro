@@ -243,7 +243,7 @@ class Index extends Component
         $claseIds = $clases->pluck('id')->all();
 
         // Estudiantes por clase (una query)
-        $estudiantesPor = DB::table('clase_estudiante')
+        $estudiantesPor = DB::table('asignacion')
             ->whereIn('clase_id', $claseIds)
             ->selectRaw('clase_id, COUNT(*) as total')
             ->groupBy('clase_id')

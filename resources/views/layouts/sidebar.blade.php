@@ -24,31 +24,15 @@
     @php
         $active   = 'bg-white dark:bg-[#1e333c] rounded-lg mx-2 my-0.5 px-4 py-2.5 shadow dark:shadow-black/40 flex items-center gap-3';
         $inactive = 'px-4 py-2.5 mx-2 hover:bg-blue-100 dark:hover:bg-[#1a2f3c] rounded-lg flex items-center gap-3 transition';
+        $label    = 'px-4 pt-3 pb-1 text-[10px] font-black uppercase tracking-widest text-[#000b60]/40 dark:text-[#bcc2ff]/40';
         $user     = auth()->user();
     @endphp
 
     <nav class="flex-grow overflow-y-auto">
 
-        {{-- ── Módulo Admin (solo administradores) ─────────────────── --}}
-        @if($user?->isAdmin())
-        <div class="px-4 pt-1 pb-1">
-            <p class="text-[10px] font-black uppercase tracking-widest text-[#000b60]/40 dark:text-[#bcc2ff]/40">Administración</p>
-        </div>
+        {{-- ── Académico ──────────────────────────────────────────────── --}}
+        <p class="{{ $label }}">Académico</p>
 
-        <a href="{{ route('admin.index') }}"
-           @click="sidebarOpen = false"
-           class="{{ request()->routeIs('admin.index') ? $active : $inactive }}">
-            <span class="material-symbols-outlined">admin_panel_settings</span>
-            Panel Admin
-        </a>
-
-        <div class="mx-4 my-2 border-t border-[#000b60]/10 dark:border-[#bcc2ff]/10"></div>
-        <div class="px-4 pb-1">
-            <p class="text-[10px] font-black uppercase tracking-widest text-[#000b60]/40 dark:text-[#bcc2ff]/40">Académico</p>
-        </div>
-        @endif
-
-        {{-- ── Sección académica (admin + catedrático) ─────────────── --}}
         <a href="{{ route('dashboard') }}"
            @click="sidebarOpen = false"
            class="{{ request()->routeIs('dashboard') ? $active : $inactive }}">
@@ -56,7 +40,7 @@
             Dashboard
         </a>
 
-<a href="{{ route('estudiantes.index') }}"
+        <a href="{{ route('estudiantes.index') }}"
            @click="sidebarOpen = false"
            class="{{ request()->routeIs('estudiantes.*') ? $active : $inactive }}">
             <span class="material-symbols-outlined">groups</span>
@@ -70,12 +54,25 @@
             Sesiones
         </a>
 
+        {{-- ── Evaluación ──────────────────────────────────────────────── --}}
+        <p class="{{ $label }}">Evaluación</p>
+
+        <a href="{{ route('calificaciones.index') }}"
+           @click="sidebarOpen = false"
+           class="{{ request()->routeIs('calificaciones.*') ? $active : $inactive }}">
+            <span class="material-symbols-outlined">grading</span>
+            Calificaciones
+        </a>
+
         <a href="{{ route('desempeno.index') }}"
            @click="sidebarOpen = false"
            class="{{ request()->routeIs('desempeno.*') ? $active : $inactive }}">
             <span class="material-symbols-outlined">leaderboard</span>
             Desempeño
         </a>
+
+        {{-- ── Reportes ────────────────────────────────────────────────── --}}
+        <p class="{{ $label }}">Reportes</p>
 
         <a href="{{ route('historial-grupos.index') }}"
            @click="sidebarOpen = false"
@@ -91,12 +88,17 @@
             Exportar Excel
         </a>
 
-        <a href="{{ route('calificaciones.index') }}"
+        {{-- ── Admin ───────────────────────────────────────────────────── --}}
+        @if($user?->isAdmin())
+        <p class="{{ $label }}">Administración</p>
+
+        <a href="{{ route('admin.index') }}"
            @click="sidebarOpen = false"
-           class="{{ request()->routeIs('calificaciones.*') ? $active : $inactive }}">
-            <span class="material-symbols-outlined">grading</span>
-            Calificaciones
+           class="{{ request()->routeIs('admin.*') ? $active : $inactive }}">
+            <span class="material-symbols-outlined">admin_panel_settings</span>
+            Panel Admin
         </a>
+        @endif
 
     </nav>
 

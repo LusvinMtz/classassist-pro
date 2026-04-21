@@ -25,7 +25,8 @@ class Estudiante extends Model
 
     public function clases()
     {
-        return $this->belongsToMany(Clase::class, 'clase_estudiante', 'estudiante_id', 'clase_id');
+        return $this->belongsToMany(Clase::class, 'asignacion', 'estudiante_id', 'clase_id')
+            ->withPivot('anio');
     }
 
     public function asistencias()

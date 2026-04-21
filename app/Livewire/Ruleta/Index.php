@@ -17,7 +17,7 @@ class Index extends Component
     public string  $ganadorNombre = '';
     public bool    $showModal     = false;
 
-    #[Validate('nullable|numeric|min:0|max:10')]
+    #[Validate('nullable|numeric|min:0|max:100')]
     public ?string $calificacion = null;
 
     #[Validate('nullable|string|max:500')]

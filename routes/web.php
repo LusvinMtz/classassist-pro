@@ -13,6 +13,7 @@ Route::middleware(['auth', 'verified', 'role.admin'])->prefix('admin')->group(fu
     Route::view('usuarios',           'admin.usuarios')           ->name('admin.usuarios');
     Route::view('tipos-calificacion', 'admin.tipos-calificacion') ->name('admin.tipos-calificacion');
     Route::view('bitacora',           'admin.bitacora')           ->name('admin.bitacora');
+    Route::view('sedes',              'sedes.index')              ->name('sedes.index');
 
 });
 
@@ -36,9 +37,6 @@ Route::middleware(['auth', 'verified', 'role.catedratico'])->group(function () {
     Route::view('exportacion',       'exportacion.index')      ->name('exportacion.index');
     Route::view('pantalla-clase',    'pantalla-clase.index')   ->name('pantalla-clase.index');
     Route::view('calificaciones',    'calificaciones.index')   ->name('calificaciones.index');
-    Route::view('sedes',             'sedes.index')            ->name('sedes.index');
-    Route::view('asignaciones',      'asignaciones.index')     ->name('asignaciones.index');
-
     // Plantilla de importación de estudiantes
     Route::get('estudiantes/plantilla', function () {
         return \Maatwebsite\Excel\Facades\Excel::download(
@@ -53,12 +51,15 @@ Route::middleware(['auth', 'verified', 'role.catedratico'])->group(function () {
 
     // Exportación Excel
     Route::get('exportacion/{claseId}/download', function (int $claseId) {
-        $user  = auth()->user();
-        $query = \App\Models\Clase::query();
-        if (!$user->isAdmin()) {
-            $query->where('usuario_id', $user->id);
+        $user = auth()->user();
+        if ($user->isAdmin()) {
+            $clase = \App\Models\Clase::findOrFail($claseId);
+        } else {
+            $porUsuarioId = \App\Models\Clase::where('usuario_id', $user->id)->pluck('id');
+            $porPivot     = $user->clasesImpartidas()->pluck('clase.id');
+            $ids          = $porUsuarioId->merge($porPivot)->unique();
+            $clase        = \App\Models\Clase::whereIn('id', $ids)->findOrFail($claseId);
         }
-        $clase  = $query->findOrFail($claseId);
         $nombre = 'classassist_' . \Illuminate\Support\Str::slug($clase->nombre) . '_' . now()->format('Ymd_His') . '.xlsx';
         return \Maatwebsite\Excel\Facades\Excel::download(
             new \App\Exports\AsistenciaExport($clase->id, $clase->nombre), $nombre

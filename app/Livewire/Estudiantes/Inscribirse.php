@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Estudiantes;
 
+use App\Models\Asignacion;
 use App\Models\Clase;
 use App\Models\Estudiante;
 use Livewire\Component;
@@ -73,15 +74,17 @@ class Inscribirse extends Component
         $carnet = trim($this->carnet);
         $correo = strtolower(trim($this->correo));
 
-        // Carnet duplicado en clase
-        if ($clase->estudiantes()->where('carnet', $carnet)->exists()) {
-            $this->addError('carnet', 'Ya estás registrado en esta clase con este carné.');
+        $anioActual = now()->year;
+
+        // Carnet duplicado en clase este año
+        if ($clase->estudiantes()->wherePivot('anio', $anioActual)->where('carnet', $carnet)->exists()) {
+            $this->addError('carnet', 'Ya estás registrado en esta clase este año con este carné.');
             return;
         }
 
-        // Correo duplicado en clase
-        if ($clase->estudiantes()->where('correo', $correo)->exists()) {
-            $this->addError('correo', 'Ya existe un estudiante con este correo en esta clase.');
+        // Correo duplicado en clase este año
+        if ($clase->estudiantes()->wherePivot('anio', $anioActual)->where('correo', $correo)->exists()) {
+            $this->addError('correo', 'Ya existe un estudiante con este correo en esta clase este año.');
             return;
         }
 
@@ -90,7 +93,11 @@ class Inscribirse extends Component
             ['nombre' => trim($this->nombre), 'correo' => $correo]
         );
 
-        $clase->estudiantes()->syncWithoutDetaching([$estudiante->id]);
+        Asignacion::firstOrCreate([
+            'estudiante_id' => $estudiante->id,
+            'clase_id'      => $clase->id,
+            'anio'          => $anioActual,
+        ]);
 
         $this->registrado  = true;
         $this->tipo        = 'success';

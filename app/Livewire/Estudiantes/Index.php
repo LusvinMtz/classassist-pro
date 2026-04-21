@@ -120,9 +120,13 @@ class Index extends Component
 
     public function save(): void
     {
-        $this->validate([], [
-            'carnet.regex'  => 'El carné debe tener el formato: 0000-00-0000 (ej. 8590-21-16653).',
-            'correo.regex'  => 'El correo debe ser institucional (@miumg.edu.gt).',
+        $this->validate([
+            'carnet' => 'required|string|max:50|regex:/^\d{4}-\d{2}-\d+$/',
+            'nombre' => 'required|string|max:100',
+            'correo' => 'nullable|email|max:100|regex:/@miumg\.edu\.gt$/',
+        ], [
+            'carnet.regex' => 'El carné debe tener el formato: 0000-00-0000 (ej. 8590-21-16653).',
+            'correo.regex' => 'El correo debe ser institucional (@miumg.edu.gt).',
         ]);
 
         $user = auth()->user();
@@ -143,17 +147,19 @@ class Index extends Component
             $clase = $this->queryClases()->findOrFail($this->claseId);
 
             $carnetDuplicado = $clase->estudiantes()
+                ->wherePivot('anio', now()->year)
                 ->where('carnet', $this->carnet)
                 ->when($this->editingId, fn ($q) => $q->where('estudiante.id', '!=', $this->editingId))
                 ->exists();
 
             if ($carnetDuplicado) {
-                $this->addError('carnet', 'Ya existe un estudiante con este carné en la clase.');
+                $this->addError('carnet', 'Ya existe un estudiante con este carné en la clase este año.');
                 return;
             }
 
             if ($this->correo) {
                 $correoDuplicado = $clase->estudiantes()
+                    ->wherePivot('anio', now()->year)
                     ->where('correo', $this->correo)
                     ->when($this->editingId, fn ($q) => $q->where('estudiante.id', '!=', $this->editingId))
                     ->exists();
@@ -174,7 +180,7 @@ class Index extends Component
                 Estudiante::findOrFail($this->editingId)->update($data);
             } else {
                 $estudiante = Estudiante::create($data);
-                $clase->estudiantes()->attach($estudiante->id);
+                $clase->estudiantes()->attach($estudiante->id, ['anio' => now()->year]);
             }
         }
 

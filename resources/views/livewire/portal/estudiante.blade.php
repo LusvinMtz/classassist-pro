@@ -96,6 +96,11 @@
                             @endif
                         </div>
                         <div class="flex items-center gap-2 shrink-0">
+                            @if ($clase->pivot?->anio)
+                                <span class="text-xs px-2 py-1 rounded-full font-bold" style="background-color: var(--guest-logo-bg); color: #fff;">
+                                    {{ $clase->pivot->anio }}
+                                </span>
+                            @endif
                             @if ($clase->catedratico)
                                 <span class="text-xs px-2 py-1 rounded-full" style="background-color: var(--guest-card-bg); color: var(--guest-subtitle);">
                                     {{ $clase->catedratico->name }}

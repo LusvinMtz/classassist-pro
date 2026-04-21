@@ -61,14 +61,16 @@ class Registrar extends Component
         if ($this->invalido || $this->registrado) return;
 
         $this->validate([
-            'carnet'   => 'required|string',
-            'latitud'  => 'required|numeric|between:-90,90',
-            'longitud' => 'required|numeric|between:-180,180',
+            'carnet'      => 'required|string',
+            'selfieData'  => 'required|string',
+            'latitud'     => 'required|numeric|between:-90,90',
+            'longitud'    => 'required|numeric|between:-180,180',
         ], [
-            'latitud.required'  => 'La ubicación GPS es obligatoria para registrar asistencia.',
-            'longitud.required' => 'La ubicación GPS es obligatoria para registrar asistencia.',
-            'latitud.between'   => 'Coordenada de latitud inválida.',
-            'longitud.between'  => 'Coordenada de longitud inválida.',
+            'selfieData.required' => 'La selfie es obligatoria para registrar asistencia.',
+            'latitud.required'    => 'La ubicación GPS es obligatoria para registrar asistencia.',
+            'longitud.required'   => 'La ubicación GPS es obligatoria para registrar asistencia.',
+            'latitud.between'     => 'Coordenada de latitud inválida.',
+            'longitud.between'    => 'Coordenada de longitud inválida.',
         ]);
 
         $sesion = Sesion::where('token', $this->token)

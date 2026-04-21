@@ -95,7 +95,7 @@ new #[Layout('layouts.guest')] class extends Component
     <!-- Contact admin -->
     <p class="text-center text-sm mt-6" style="color: var(--guest-subtitle);">
         ¿No tienes acceso?
-        <a href="mailto:admin@university.edu" class="font-semibold hover:underline" style="color: var(--guest-title);">
+        <a href="mailto:lmartinezm20@miumg.edu.gt" class="font-semibold hover:underline" style="color: var(--guest-title);">
             Contacta al Administrador
         </a>
     </p>

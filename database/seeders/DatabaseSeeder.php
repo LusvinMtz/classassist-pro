@@ -60,7 +60,7 @@ class DatabaseSeeder extends Seeder
         // ─────────────────────────────────────────────
         $admin = User::create([
             'nombre'   => 'Administrador',
-            'email'    => 'admin@classassist.com',
+            'email'    => 'lmartinezm20@miumg.edu.gt',
             'password' => Hash::make('123'),
             'estado'   => true,
         ]);

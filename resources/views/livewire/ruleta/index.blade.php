@@ -215,12 +215,12 @@
 
                         <div>
                             <label class="block text-sm font-semibold mb-1">
-                                Calificación <span class="text-gray-400 font-normal">(0 – 10)</span>
+                                Calificación <span class="text-gray-400 font-normal">(0 – 100)</span>
                             </label>
                             <input wire:model="calificacion"
                                    type="number"
-                                   min="0" max="10" step="0.5"
-                                   placeholder="Ej. 8.5"
+                                   min="0" max="100" step="0.5"
+                                   placeholder="Ej. 85"
                                    class="w-full border border-gray-200 dark:border-[#2a3d4a] dark:bg-[#162a35] dark:text-[#dff4ff] rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#000b60] @error('calificacion') border-red-400 @enderror">
                             @error('calificacion')
                                 <p class="text-red-500 text-xs mt-1">{{ $message }}</p>

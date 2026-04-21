@@ -71,48 +71,44 @@
 
     {{-- ── Filtros ─────────────────────────────────────────────────────────── --}}
     <div class="bg-white dark:bg-[#1e333c] rounded-xl shadow p-4 mb-6">
-
-        {{-- Fila 1: filtros en cascada (admin) o selector de clase (catedrático) --}}
-        <div class="flex flex-wrap gap-3 items-end mb-3">
-
-            @if($esAdmin)
-                {{-- Sede --}}
-                <div class="flex-1 min-w-[160px]">
-                    <label class="block text-xs font-bold text-[#000b60] dark:text-[#bcc2ff] mb-1.5 uppercase tracking-wide">Sede</label>
-                    <select wire:model.live="sedeId"
-                        class="w-full border border-gray-200 dark:border-[#1a3040] dark:bg-[#162830] dark:text-[#dff4ff] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#000b60]">
-                        <option value="">Todas las sedes</option>
-                        @foreach($sedes as $sede)
-                            <option value="{{ $sede->id }}">{{ $sede->nombre }}</option>
-                        @endforeach
-                    </select>
-                </div>
-
-                {{-- Carrera --}}
-                <div class="flex-1 min-w-[160px]">
-                    <label class="block text-xs font-bold text-[#000b60] dark:text-[#bcc2ff] mb-1.5 uppercase tracking-wide">Carrera</label>
-                    <select wire:model.live="carreraId"
-                        class="w-full border border-gray-200 dark:border-[#1a3040] dark:bg-[#162830] dark:text-[#dff4ff] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#000b60]"
-                        {{ empty($sedes->count()) ? 'disabled' : '' }}>
-                        <option value="">Todas las carreras</option>
-                        @foreach($carreras as $carrera)
-                            <option value="{{ $carrera->id }}">{{ $carrera->nombre }}</option>
-                        @endforeach
-                    </select>
-                </div>
-            @endif
+        <div class="flex flex-wrap gap-3 items-end">
 
             {{-- Clase --}}
-            <div class="flex-1 min-w-[180px]">
+            <div class="flex-1 min-w-[220px]">
                 <label class="block text-xs font-bold text-[#000b60] dark:text-[#bcc2ff] mb-1.5 uppercase tracking-wide">Clase</label>
                 <select wire:model.live="claseId"
                     class="w-full border border-gray-200 dark:border-[#1a3040] dark:bg-[#162830] dark:text-[#dff4ff] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#000b60]">
-                    @if($esAdmin)<option value="">Todas las clases</option>@endif
+                    <option value="">Todas las clases</option>
                     @foreach($clases as $clase)
                         <option value="{{ $clase->id }}">{{ $clase->nombre }}</option>
                     @endforeach
                 </select>
             </div>
+
+            {{-- Desde --}}
+            <div>
+                <label class="block text-xs font-bold text-[#000b60] dark:text-[#bcc2ff] mb-1.5 uppercase tracking-wide">Desde</label>
+                <input wire:model.live="fechaDesde" type="date"
+                    class="border border-gray-200 dark:border-[#1a3040] dark:bg-[#162830] dark:text-[#dff4ff] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#000b60]">
+            </div>
+
+            {{-- Hasta --}}
+            <div>
+                <label class="block text-xs font-bold text-[#000b60] dark:text-[#bcc2ff] mb-1.5 uppercase tracking-wide">Hasta</label>
+                <input wire:model.live="fechaHasta" type="date"
+                    class="border border-gray-200 dark:border-[#1a3040] dark:bg-[#162830] dark:text-[#dff4ff] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#000b60]">
+            </div>
+
+            {{-- Limpiar --}}
+            @if($claseId || $fechaDesde)
+            <div class="self-end">
+                <button wire:click="limpiarFiltros"
+                    class="flex items-center gap-1.5 border border-gray-200 dark:border-[#1a3040] text-gray-500 dark:text-gray-400 hover:text-red-500 hover:border-red-300 dark:hover:text-red-400 dark:hover:border-red-700 rounded-lg px-3 py-2 text-sm font-semibold transition">
+                    <span class="material-symbols-outlined" style="font-size:16px">filter_alt_off</span>
+                    Limpiar
+                </button>
+            </div>
+            @endif
 
             @if($claseNombre)
             <div class="ml-auto text-right hidden lg:block">
@@ -121,44 +117,8 @@
                 <p class="text-xs text-gray-400 dark:text-gray-500">{{ $totalEstClase }} estudiante(s)</p>
             </div>
             @endif
+
         </div>
-
-        {{-- Fila 2: rango de fechas --}}
-        <div class="flex flex-wrap gap-3 items-end border-t border-gray-100 dark:border-[#1a3040] pt-3">
-            <div>
-                <label class="block text-xs font-bold text-[#000b60] dark:text-[#bcc2ff] mb-1.5 uppercase tracking-wide">Desde</label>
-                <input wire:model.live="fechaDesde" type="date"
-                    class="border border-gray-200 dark:border-[#1a3040] dark:bg-[#162830] dark:text-[#dff4ff] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#000b60]">
-            </div>
-            <div>
-                <label class="block text-xs font-bold text-[#000b60] dark:text-[#bcc2ff] mb-1.5 uppercase tracking-wide">Hasta</label>
-                <input wire:model.live="fechaHasta" type="date"
-                    class="border border-gray-200 dark:border-[#1a3040] dark:bg-[#162830] dark:text-[#dff4ff] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#000b60]">
-            </div>
-
-            {{-- Atajos rápidos --}}
-            <div class="flex gap-1.5 flex-wrap">
-                @foreach([
-                    ['label' => 'Este mes',  'desde' => now()->startOfMonth()->format('Y-m-d'),  'hasta' => now()->format('Y-m-d')],
-                    ['label' => '3 meses',   'desde' => now()->subMonths(3)->format('Y-m-d'),     'hasta' => now()->format('Y-m-d')],
-                    ['label' => '6 meses',   'desde' => now()->subMonths(6)->format('Y-m-d'),     'hasta' => now()->format('Y-m-d')],
-                    ['label' => 'Este año',  'desde' => now()->startOfYear()->format('Y-m-d'),    'hasta' => now()->format('Y-m-d')],
-                    ['label' => 'Todo',      'desde' => '',                                        'hasta' => ''],
-                ] as $atajo)
-                @php
-                    $esAtajoActivo = $fechaDesde === $atajo['desde'] && $fechaHasta === $atajo['hasta'];
-                @endphp
-                    <button wire:click="aplicarAtajo('{{ $atajo['desde'] }}', '{{ $atajo['hasta'] }}')"
-                            class="px-3 py-2 rounded-lg text-xs font-bold border transition
-                                {{ $esAtajoActivo
-                                    ? 'bg-[#000b60] dark:bg-[#303c9a] text-white border-[#000b60]'
-                                    : 'bg-white dark:bg-[#162830] text-[#000b60] dark:text-[#bcc2ff] border-gray-200 dark:border-[#1a3040] hover:bg-[#e6f6ff] dark:hover:bg-[#1a3040]' }}">
-                        {{ $atajo['label'] }}
-                    </button>
-                @endforeach
-            </div>
-        </div>
-
     </div>
 
     {{-- Datos para las gráficas: se re-ejecuta en cada re-render de Livewire --}}
@@ -265,8 +225,8 @@
                 <tbody class="divide-y divide-gray-100 dark:divide-[#1a3040]">
                     @foreach($sesionesRecientes as $sesion)
                     @php
-                        $pct      = $totalEstClase > 0 ? round(($sesion->asistencias_count / $totalEstClase) * 100) : 0;
-                        $pctColor = $pct >= 75 ? 'text-green-600' : ($pct >= 50 ? 'text-orange-500' : 'text-red-500');
+                        $pct      = $totalEstClase > 0 ? round(($sesion->asistencias_count / $totalEstClase) * 100) : null;
+                        $pctColor = $pct !== null ? ($pct >= 75 ? 'text-green-600' : ($pct >= 50 ? 'text-orange-500' : 'text-red-500')) : 'text-gray-400';
                     @endphp
                     <tr class="hover:bg-[#f3faff] dark:hover:bg-[#162830] transition">
                         <td class="px-6 py-3 font-semibold text-[#000b60] dark:text-[#bcc2ff]">
@@ -274,9 +234,13 @@
                         </td>
                         <td class="px-4 py-3 text-center">
                             <span class="font-bold">{{ $sesion->asistencias_count }}</span>
-                            <span class="text-gray-400 text-xs"> / {{ $totalEstClase }}</span>
+                            @if($totalEstClase !== null)
+                                <span class="text-gray-400 text-xs"> / {{ $totalEstClase }}</span>
+                            @endif
                         </td>
-                        <td class="px-4 py-3 text-center font-bold {{ $pctColor }}">{{ $pct }}%</td>
+                        <td class="px-4 py-3 text-center font-bold {{ $pctColor }}">
+                            {{ $pct !== null ? $pct . '%' : '—' }}
+                        </td>
                         <td class="px-4 py-3 text-center font-semibold text-gray-700 dark:text-gray-300">
                             {{ $sesion->participaciones_count }}
                         </td>
@@ -382,21 +346,32 @@
     function renderParticipaciones(d) {
         var ctx = document.getElementById('chartParticipaciones');
         if (!ctx) return;
+        var dark = isDarkMode();
         charts.part = new Chart(ctx, {
             type: 'bar',
             data: {
                 labels: d.labels,
                 datasets: [
-                    { type: 'bar',  label: 'Participaciones',    data: d.data,     backgroundColor: 'rgba(0,11,96,0.75)', borderRadius: 4, yAxisID: 'y' },
-                    { type: 'line', label: 'Prom. calificación', data: d.promedio, borderColor: '#f97316', backgroundColor: 'rgba(249,115,22,0.08)', pointBackgroundColor: '#f97316', pointRadius: 4, tension: 0.3, fill: true, yAxisID: 'y2' }
+                    { type: 'bar',  label: 'Participaciones',    data: d.data,     backgroundColor: dark ? 'rgba(99,179,237,0.75)' : 'rgba(59,130,246,0.65)', borderRadius: 4, yAxisID: 'y' },
+                    { type: 'line', label: 'Prom. calificación', data: d.promedio, borderColor: '#f97316', backgroundColor: 'rgba(249,115,22,0.08)', pointBackgroundColor: '#f97316', pointRadius: 4, tension: 0.3, fill: false, yAxisID: 'y2' }
                 ]
             },
             options: {
                 responsive: true, maintainAspectRatio: false,
-                plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, padding: 14 } } },
+                plugins: {
+                    legend: { position: 'bottom', labels: { boxWidth: 10, padding: 14 } },
+                    tooltip: {
+                        callbacks: {
+                            label: function(c) {
+                                if (c.datasetIndex === 0) return ' ' + c.raw + ' participación(es)';
+                                return c.raw > 0 ? ' Promedio: ' + c.raw + ' / 100' : ' Sin calificación';
+                            }
+                        }
+                    }
+                },
                 scales: {
-                    y:  { beginAtZero: true, position: 'left',  ticks: { stepSize: 1 }, grid: { color: gridColor() } },
-                    y2: { beginAtZero: true, position: 'right', max: 10, grid: { drawOnChartArea: false }, ticks: { stepSize: 2 } },
+                    y:  { beginAtZero: true, position: 'left',  suggestedMax: 5, ticks: { stepSize: 1, precision: 0 }, grid: { color: gridColor() } },
+                    y2: { beginAtZero: true, position: 'right', min: 0, max: 100, grid: { drawOnChartArea: false }, ticks: { stepSize: 20, callback: function(v) { return v + ' pts'; } } },
                     x:  { grid: { display: false } }
                 }
             }

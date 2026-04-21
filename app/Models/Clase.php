@@ -55,7 +55,15 @@ class Clase extends Model
 
     public function estudiantes()
     {
-        return $this->belongsToMany(Estudiante::class, 'clase_estudiante', 'clase_id', 'estudiante_id');
+        return $this->belongsToMany(Estudiante::class, 'asignacion', 'clase_id', 'estudiante_id')
+            ->withPivot('anio');
+    }
+
+    public function estudiantesAnio(int $anio)
+    {
+        return $this->belongsToMany(Estudiante::class, 'asignacion', 'clase_id', 'estudiante_id')
+            ->withPivot('anio')
+            ->wherePivot('anio', $anio);
     }
 
     public function sesiones()

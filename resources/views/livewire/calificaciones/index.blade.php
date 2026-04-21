@@ -67,7 +67,6 @@
 
     {{-- TAB: TIPO FIJO --}}
     @if($tipoActivo && !$tipoActivo->esActividades())
-    @php $allLocked = !$esAdmin && $estudiantes->isNotEmpty() && $estudiantes->every(fn($e) => ($notas[$e->id] ?? '') !== ''); @endphp
 
     <div class="bg-white dark:bg-[#1e333c] rounded-xl shadow overflow-hidden">
 
@@ -129,7 +128,7 @@
             </table>
         </div>
 
-        @if($allLocked)
+        @if(!$esAdmin && $notasGuardadas)
         <div class="px-5 py-3 bg-amber-50 dark:bg-amber-900/10 border-t border-amber-100 dark:border-amber-900/20 flex items-center gap-2 text-xs text-amber-700 dark:text-amber-400">
             <span class="material-symbols-outlined" style="font-size:15px">lock</span>
             Notas guardadas y bloqueadas. Si hay un error, repórtalo al administrador del sistema para que realice las correcciones.
@@ -246,15 +245,13 @@
 
         </div>
 
-        {{-- Tabla de notas individuales --}}
+        {{-- Tabla de notas individuales (incluye grupales como solo lectura) --}}
         @php
             $actividadesIndividuales = $actividades->filter(fn($a) => !$a->esGrupal());
-            $allLockedInd = !$esAdmin && $actividadesIndividuales->isNotEmpty() && $estudiantes->isNotEmpty()
-                && $actividadesIndividuales->every(fn($act) =>
-                    $estudiantes->every(fn($e) => ($notasActs[$act->id][$e->id] ?? '') !== '')
-                );
+            $actividadesGrupalesTabla = $actividades->filter(fn($a) => $a->esGrupal());
+            $todasParaTabla = $actividades; // todas: individuales editables + grupales solo lectura
         @endphp
-        @if($actividadesIndividuales->isNotEmpty() && $estudiantes->isNotEmpty())
+        @if($todasParaTabla->isNotEmpty() && $estudiantes->isNotEmpty())
         <div class="bg-white dark:bg-[#1e333c] rounded-xl shadow overflow-hidden">
 
             <div class="bg-[#e6f6ff] dark:bg-[#0d2535] px-5 py-3 flex items-center justify-between flex-wrap gap-2">
@@ -262,7 +259,7 @@
                     <span class="material-symbols-outlined" style="font-size:18px">table_chart</span>
                     Notas individuales
                 </span>
-                @if(!$allLockedInd)
+                @if($esAdmin || !$notasActsGuardadas)
                 <button wire:click="guardarNotasActividades"
                         class="bg-[#000b60] text-white px-4 py-1.5 rounded-lg text-xs font-bold hover:opacity-90 transition flex items-center gap-1">
                     <span class="material-symbols-outlined" style="font-size:14px">save</span>
@@ -277,10 +274,14 @@
                         <tr>
                             <th class="text-left px-4 py-3 font-semibold text-gray-500 dark:text-gray-400 text-xs sticky left-0 bg-gray-50 dark:bg-[#162a35] min-w-[100px]">Carné</th>
                             <th class="text-left px-4 py-3 font-semibold text-gray-500 dark:text-gray-400 text-xs sticky left-[100px] bg-gray-50 dark:bg-[#162a35] min-w-[160px]">Nombre</th>
-                            @foreach($actividadesIndividuales as $act)
+                            @foreach($todasParaTabla as $act)
                             <th class="text-center px-4 py-3 font-semibold text-gray-500 dark:text-gray-400 text-xs min-w-[130px]">
                                 <p>{{ $act->nombre }}</p>
-                                <p class="font-normal text-gray-400">/100</p>
+                                @if($act->esGrupal())
+                                    <span class="inline-block text-[10px] bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 px-1.5 rounded-full font-semibold">Grupal</span>
+                                @else
+                                    <p class="font-normal text-gray-400">/100</p>
+                                @endif
                             </th>
                             @endforeach
                             <th class="text-center px-4 py-3 font-semibold text-gray-500 dark:text-gray-400 text-xs min-w-[110px]">
@@ -292,7 +293,7 @@
                         @foreach($estudiantes as $e)
                         @php
                             $sumaEst = 0; $sumaMax = 0;
-                            foreach($actividadesIndividuales as $act) {
+                            foreach($todasParaTabla as $act) {
                                 $n = $notasActs[$act->id][$e->id] ?? '';
                                 if ($n !== '') $sumaEst += (float)$n;
                                 $sumaMax += (float)$act->punteo_max;
@@ -303,13 +304,20 @@
                         <tr class="hover:bg-[#f3faff] dark:hover:bg-[#1a2f3c]">
                             <td class="px-4 py-2.5 font-mono text-xs text-[#000b60] dark:text-[#bcc2ff] sticky left-0 bg-white dark:bg-[#1e333c]">{{ $e->carnet }}</td>
                             <td class="px-4 py-2.5 font-semibold sticky left-[100px] bg-white dark:bg-[#1e333c] text-sm">{{ $e->nombre }}</td>
-                            @foreach($actividadesIndividuales as $act)
-                            @php $notaAct = $notasActs[$act->id][$e->id] ?? ''; $lockedAct = !$esAdmin && $notaAct !== ''; @endphp
-                            <td class="px-4 py-2.5">
+                            @foreach($todasParaTabla as $act)
+                            @php
+                                $notaAct = $notasActs[$act->id][$e->id] ?? '';
+                                $esGrupalAct = $act->esGrupal();
+                                $lockedAct = $esGrupalAct || (!$esAdmin && $notaAct !== '');
+                            @endphp
+                            <td class="px-4 py-2.5 {{ $esGrupalAct ? 'bg-purple-50/40 dark:bg-purple-900/5' : '' }}">
                                 @if($lockedAct)
-                                    <div class="flex items-center justify-center gap-1 text-xs font-bold text-[#000b60] dark:text-[#bcc2ff]">
-                                        {{ $notaAct }}
-                                        <span class="material-symbols-outlined text-gray-400 dark:text-gray-500" style="font-size:12px" title="Solo el administrador puede modificar esta nota">lock</span>
+                                    <div class="flex items-center justify-center gap-1 text-xs font-bold {{ $esGrupalAct ? 'text-purple-700 dark:text-purple-300' : 'text-[#000b60] dark:text-[#bcc2ff]' }}">
+                                        {{ $notaAct !== '' ? $notaAct : '—' }}
+                                        <span class="material-symbols-outlined {{ $esGrupalAct ? 'text-purple-400' : 'text-gray-400 dark:text-gray-500' }}" style="font-size:12px"
+                                              title="{{ $esGrupalAct ? 'Nota propagada del grupo' : 'Solo el administrador puede modificar esta nota' }}">
+                                            {{ $esGrupalAct ? 'hub' : 'lock' }}
+                                        </span>
                                     </div>
                                 @else
                                     <input wire:model.blur="notasActs.{{ $act->id }}.{{ $e->id }}"
@@ -334,15 +342,20 @@
                 </table>
             </div>
 
-            @if($allLockedInd)
+            @if(!$esAdmin && $notasActsGuardadas)
             <div class="px-5 py-3 bg-amber-50 dark:bg-amber-900/10 border-t border-amber-100 dark:border-amber-900/20 flex items-center gap-2 text-xs text-amber-700 dark:text-amber-400">
                 <span class="material-symbols-outlined" style="font-size:15px">lock</span>
                 Notas guardadas y bloqueadas. Si hay un error, repórtalo al administrador del sistema para que realice las correcciones.
             </div>
             @else
-            <div class="px-5 py-3 bg-gray-50 dark:bg-[#162a35] border-t border-gray-100 dark:border-[#1a2f3c] text-xs text-gray-400">
-                <span class="text-blue-600 dark:text-blue-400 font-semibold">Promedio:</span>
-                Cada actividad vale sobre 100. El promedio de todas se escala al punteo del tipo ({{ $tipoActivo->punteo_max }} pts).
+            <div class="px-5 py-3 bg-gray-50 dark:bg-[#162a35] border-t border-gray-100 dark:border-[#1a2f3c] text-xs text-gray-400 flex flex-wrap gap-3">
+                <span><span class="text-blue-600 dark:text-blue-400 font-semibold">Promedio:</span> Cada actividad vale sobre 100. El promedio de todas se escala al punteo del tipo ({{ $tipoActivo->punteo_max }} pts).</span>
+                @if($actividadesGrupalesTabla->isNotEmpty())
+                <span class="flex items-center gap-1 text-purple-600 dark:text-purple-400">
+                    <span class="material-symbols-outlined" style="font-size:13px">hub</span>
+                    Las columnas Grupales muestran notas propagadas desde los grupos — solo lectura.
+                </span>
+                @endif
             </div>
             @endif
         </div>
@@ -354,8 +367,6 @@
         @foreach($actividadesGrupales as $act)
         @php
             $gruposDeEstaAct = $gruposPorActividad[$act->id] ?? collect();
-            $allLockedGrp = !$esAdmin && $gruposDeEstaAct->isNotEmpty()
-                && $gruposDeEstaAct->every(fn($g) => ($notasGrupos[$act->id][$g->id] ?? '') !== '');
         @endphp
 
         <div class="bg-white dark:bg-[#1e333c] rounded-xl shadow overflow-hidden">
@@ -366,7 +377,7 @@
                     {{ $act->nombre }}
                     <span class="text-purple-200 font-normal text-xs">(Grupal — Máx: {{ number_format($act->punteo_max, 0) }} pts)</span>
                 </span>
-                @if(!$allLockedGrp)
+                @if($esAdmin || !$notasGruposGuardadas)
                 <button wire:click="guardarNotasGrupos"
                         class="bg-white text-purple-700 px-4 py-1.5 rounded-lg text-xs font-bold hover:opacity-90 transition flex items-center gap-1">
                     <span class="material-symbols-outlined" style="font-size:14px">save</span>
@@ -424,7 +435,7 @@
                     </tbody>
                 </table>
             </div>
-            @if($allLockedGrp)
+            @if(!$esAdmin && $notasGruposGuardadas)
             <div class="px-5 py-2 bg-amber-50 dark:bg-amber-900/10 border-t border-amber-100 dark:border-amber-900/20 text-xs text-amber-700 dark:text-amber-400 flex items-center gap-1">
                 <span class="material-symbols-outlined" style="font-size:14px">lock</span>
                 Notas guardadas y bloqueadas. Si hay un error, repórtalo al administrador del sistema para que realice las correcciones.

@@ -76,7 +76,7 @@ class EstudiantesImport implements ToCollection, WithHeadingRow, SkipsEmptyRows
                 ['nombre' => $nombre, 'correo' => $correo ?: null]
             );
 
-            $this->clase->estudiantes()->attach($estudiante->id);
+            $this->clase->estudiantes()->attach($estudiante->id, ['anio' => now()->year]);
             $this->importados++;
         }
     }

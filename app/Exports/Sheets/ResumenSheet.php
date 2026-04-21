@@ -40,7 +40,7 @@ class ResumenSheet implements FromCollection, WithHeadings, WithTitle, WithStyle
             ->get()
             ->keyBy('estudiante_id');
 
-        return $clase->estudiantes()->orderBy('nombre')->get()->map(function ($e) use (
+        return $clase->estudiantes()->wherePivot('anio', now()->year)->orderBy('nombre')->get()->map(function ($e) use (
             $totalSesiones, $asistenciasPor, $participacionesPor
         ) {
             $asist  = $asistenciasPor[$e->id] ?? 0;

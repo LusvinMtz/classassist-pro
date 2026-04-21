@@ -19,9 +19,12 @@ class Index extends Component
     {
         $user = auth()->user();
         if ($user->isAdmin()) {
-            return Clase::where('usuario_id', $user->id);
+            return Clase::query();
         }
-        return $user->clasesImpartidas();
+        $porUsuarioId = Clase::where('usuario_id', $user->id)->pluck('id');
+        $porPivot     = $user->clasesImpartidas()->pluck('clase.id');
+        $ids          = $porUsuarioId->merge($porPivot)->unique();
+        return Clase::whereIn('id', $ids);
     }
 
     public function render()

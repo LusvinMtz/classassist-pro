@@ -54,7 +54,7 @@ class CalificacionesSheet implements FromCollection, WithHeadings, WithTitle, Wi
             ->groupBy('estudiante_id')
             ->map(fn ($cals) => $cals->keyBy('tipo_calificacion_id'));
 
-        return $clase->estudiantes()->orderBy('nombre')->get()->map(function ($e) use ($tipos, $calsPorEstudiante) {
+        return $clase->estudiantes()->wherePivot('anio', now()->year)->orderBy('nombre')->get()->map(function ($e) use ($tipos, $calsPorEstudiante) {
             $row        = [$e->carnet, $e->nombre];
             $total      = 0;
             $tieneNotas = false;

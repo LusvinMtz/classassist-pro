@@ -180,11 +180,19 @@ class Index extends Component
 
     private function loadNotas(int $tipoId): void
     {
-        $this->notas = Calificacion::where('clase_id', $this->claseId)
+        $notas = Calificacion::where('clase_id', $this->claseId)
             ->where('tipo_calificacion_id', $tipoId)
             ->pluck('nota', 'estudiante_id')
-            ->map(fn ($v) => $v !== null ? (string) $v : '')
-            ->toArray();
+            ->map(fn ($v) => $v !== null ? (string) $v : '');
+
+        $this->notas = $notas->toArray();
+
+        // Auto-detectar si todas las notas ya están en BD (recarga de pestaña)
+        $totalEstudiantes = \Illuminate\Support\Facades\DB::table('asignacion')
+            ->where('clase_id', $this->claseId)->count();
+        if ($totalEstudiantes > 0 && $notas->count() >= $totalEstudiantes) {
+            $this->notasGuardadas = true;
+        }
     }
 
     private function loadNotasActividades(): void
@@ -196,6 +204,18 @@ class Index extends Component
                 ->pluck('nota', 'estudiante_id')
                 ->map(fn ($v) => $v !== null ? (string) $v : '')
                 ->toArray();
+        }
+
+        // Auto-detectar si todas las actividades individuales ya tienen notas para todos
+        $totalEstudiantes = \Illuminate\Support\Facades\DB::table('asignacion')
+            ->where('clase_id', $this->claseId)->count();
+        $indActividades = $actividades->filter(fn($a) => $a->grupo_sesion_id === null);
+
+        if ($totalEstudiantes > 0 && $indActividades->isNotEmpty()) {
+            $allSaved = $indActividades->every(
+                fn($act) => count($this->notasActs[$act->id] ?? []) >= $totalEstudiantes
+            );
+            if ($allSaved) $this->notasActsGuardadas = true;
         }
     }
 
@@ -223,6 +243,17 @@ class Index extends Component
 
                 $this->notasGrupos[$act->id][$grupo->id] = $nota !== null ? (string) $nota : '';
             }
+        }
+
+        // Auto-detectar si todos los grupos ya tienen notas guardadas
+        if (!empty($this->notasGrupos)) {
+            $allSaved = true;
+            foreach ($this->notasGrupos as $porGrupo) {
+                foreach ($porGrupo as $nota) {
+                    if ($nota === '') { $allSaved = false; break 2; }
+                }
+            }
+            if ($allSaved) $this->notasGruposGuardadas = true;
         }
     }
 
@@ -282,6 +313,7 @@ class Index extends Component
         }
 
         $this->notasGuardadas = true;
+        $this->loadNotas((int) $this->tab);
         $this->dispatch('notify', message: 'Notas guardadas correctamente.');
     }
 
@@ -387,6 +419,7 @@ class Index extends Component
         }
 
         $this->notasActsGuardadas = true;
+        $this->loadNotasActividades();
         $this->dispatch('notify', message: 'Notas de actividades guardadas.');
     }
 
@@ -441,6 +474,8 @@ class Index extends Component
         }
 
         $this->notasGruposGuardadas = true;
+        $this->loadNotasActividades();
+        $this->loadNotasGrupos();
         $this->dispatch('notify', message: 'Notas grupales guardadas y propagadas.');
     }
 
