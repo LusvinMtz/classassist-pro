@@ -318,12 +318,10 @@
                                     $scoreAsist = $pct;
                                     $scoreCalif = $e['promedio'] !== null ? (float) $e['promedio'] : null;
                                     $scoreNotas = $e['prom_notas'] !== null ? (float) $e['prom_notas'] : null;
-                                    $partes = 0;
                                     $rendimiento = $scoreAsist * 0.5;
-                                    $partes += 50;
-                                    if ($scoreCalif !== null) { $rendimiento += $scoreCalif * 0.2; $partes += 20; }
-                                    if ($scoreNotas !== null) { $rendimiento += $scoreNotas * 0.3; $partes += 30; }
-                                    $rendimiento = $partes > 0 ? round($rendimiento / $partes * 100) : 0;
+                                    if ($scoreCalif !== null) { $rendimiento += $scoreCalif * 0.2; }
+                                    if ($scoreNotas !== null) { $rendimiento += $scoreNotas * 0.3; }
+                                    $rendimiento = round($rendimiento);
                                     $rendColor = $rendimiento >= 75 ? 'text-green-600 bg-green-50' : ($rendimiento >= 50 ? 'text-orange-500 bg-orange-50' : 'text-red-500 bg-red-50');
                                 @endphp
                                 <tr class="hover:bg-[#f3faff] dark:hover:bg-[#1a2f3c] transition {{ $pos === 0 ? 'bg-yellow-50/50 dark:bg-yellow-900/10' : '' }}">

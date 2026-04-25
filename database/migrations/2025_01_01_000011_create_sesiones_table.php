@@ -15,7 +15,6 @@ return new class extends Migration
             $table->string('token', 255)->nullable();
             $table->dateTime('expiracion')->nullable();
             
-            // 👇 Campo agregado directamente
             $table->boolean('finalizada')->default(false);
             $table->timestamps();
             $table->softDeletes();

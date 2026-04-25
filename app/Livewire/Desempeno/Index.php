@@ -95,8 +95,8 @@ class Index extends Component
         if ($this->claseId) {
             [$rankingTotal, $totalSesiones] = $this->buildRankingEstudiantes($this->claseId);
             $totalRank  = $rankingTotal->count();
-            $ranking    = $rankingTotal->forPage($this->pageRank, 5)->values();
-            $lastPage   = (int) ceil($totalRank / 5);
+            $ranking    = $rankingTotal->forPage($this->pageRank, 10)->values();
+            $lastPage   = (int) ceil($totalRank / 10);
 
             return view('livewire.desempeno.index', [
                 'esAdmin'       => true,
@@ -148,8 +148,8 @@ class Index extends Component
 
         if ($this->claseId) {
             [$rankingTotal, $totalSesiones] = $this->buildRankingEstudiantes($this->claseId);
-            $lastPage = (int) ceil($rankingTotal->count() / 5);
-            $ranking  = $rankingTotal->forPage($this->pageRank, 5)->values();
+            $lastPage = (int) ceil($rankingTotal->count() / 10);
+            $ranking  = $rankingTotal->forPage($this->pageRank, 10)->values();
         }
 
         return view('livewire.desempeno.index', [
@@ -233,7 +233,7 @@ class Index extends Component
             default           => $ranking->sortByDesc('pct_asistencia'),
         };
 
-        return [$ranking->values(), $totalSesiones];
+        return [$ranking->take(10)->values(), $totalSesiones];
     }
 
     private function buildResumenClases(Collection $clases): Collection
